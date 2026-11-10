@@ -8,8 +8,9 @@ const TAILWIND = path.join(SERVE_NODE_MODULES, ".bin", "tailwindcss");
 
 export async function buildCss(mdxPath: string): Promise<string> {
   mkdirSync(CACHE_DIR, { recursive: true });
-  const input = path.join(CACHE_DIR, `${process.pid}.in.css`);
-  const output = path.join(CACHE_DIR, `${process.pid}.out.css`);
+  const stem = `${process.pid}.${Bun.hash(mdxPath).toString(36)}`;
+  const input = path.join(CACHE_DIR, `${stem}.in.css`);
+  const output = path.join(CACHE_DIR, `${stem}.out.css`);
   const base = readFileSync(path.join(SRC_DIR, "globals.css"), "utf8");
   await Bun.write(
     input,

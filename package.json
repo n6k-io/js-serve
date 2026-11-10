@@ -14,6 +14,7 @@
   },
   "scripts": {
     "test": "bun test",
+    "tags": "bun scripts/tag-release.ts",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "fmt": "prettier --write --log-level=warn .",

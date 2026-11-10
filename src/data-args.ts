@@ -1,4 +1,4 @@
-const ALIAS = /^[A-Za-z_][A-Za-z0-9_]*$/;
+export const ALIAS = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const DEFAULT_ALIAS = "db";
 
 export class DataArgError extends Error {}
