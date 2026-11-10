@@ -1,15 +1,24 @@
 import type { ComponentProps } from "react";
 import type { MDXComponents } from "mdx/types";
 import * as n6k from "@n6k.io/ui/components";
+import {
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@n6k.io/ui/components/ui/select";
 
-// MDX component scope. The build auto-discovers this file, so every name
-// returned here is usable as a bare tag in any `.mdx` page — no import needed.
-// Spread the n6k component set, then add your own components or restyle the
-// markdown elements. A tag that isn't registered here (or imported in the page)
-// fails when the page is rendered.
+// Passed to the build as `mdxComponents`. A tag that is neither
+// here nor imported by the page still builds and fails at render.
+// `Controls` is the name @n6k.io/build's remark-controls emits for `::X[…]`.
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
     ...n6k,
+    Controls: n6k.controls,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
     h1: (props: ComponentProps<"h1">) => (
       <h1 className="pb-4 text-4xl font-black tracking-tight" {...props} />
     ),

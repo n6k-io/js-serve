@@ -86,7 +86,7 @@ export class PagesSite implements Site {
       entry.unwatch = watchFile(file, () => {
         entry.cached = undefined;
         this.onChange(key);
-        console.log(`changed ${key}`);
+        console.error(`changed ${key}`);
       });
     } catch (err) {
       console.error(
@@ -112,7 +112,7 @@ export class PagesSite implements Site {
       bundlePage(file, {
         aliases: catalogs,
         dataPath: `/_n6k/data/${app}/`,
-        token,
+        tokens: Object.fromEntries(catalogs.map((c) => [c, token])),
       }),
       buildCss(file),
     ]);
