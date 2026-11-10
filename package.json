@@ -1,6 +1,6 @@
 {
   "name": "@n6k.io/serve",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": false,
   "description": "Serve a single .mdx page with live data from n6kd or pykit",
   "repository": "https://github.com/n6k-io/js-serve",
@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@duckdb/duckdb-wasm": "1.33.1-dev114.0",
-    "@n6k.io/build": "link:@n6k.io/build",
+    "@n6k.io/build": "^0.5.1",
     "@n6k.io/db": "^0.13.1",
     "@n6k.io/runtime": "^0.1.2",
     "@n6k.io/ui": "^0.10.2",

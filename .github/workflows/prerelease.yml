@@ -1,0 +1,26 @@
+name: Prerelease
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version not published to npm
+        run: |
+          NAME=$(node -p "require('./package.json').name")
+          VERSION=$(node -p "require('./package.json').version")
+          if [ -n "$(npm view "$NAME@$VERSION" version 2>/dev/null)" ]; then
+            echo "::error::$NAME@$VERSION is already published - bump the version"
+            exit 1
+          fi
+      - name: Tag does not exist
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          if git ls-remote --exit-code --tags origin "refs/tags/v$VERSION" >/dev/null; then
+            echo "::error::tag v$VERSION already exists"
+            exit 1
+          fi
