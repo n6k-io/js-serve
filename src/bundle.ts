@@ -15,16 +15,22 @@ import {
 
 export type Bundle = Map<string, string>;
 
+export type RootProps = {
+  aliases: string[];
+  dataPath: string;
+  token: string;
+};
+
 export async function bundlePage(
   mdxPath: string,
-  aliases: string[],
+  rootProps: RootProps,
 ): Promise<Bundle> {
   const mdxDir = path.dirname(mdxPath);
   const { entries, modules } = await preprocess(
     { index: mdxPath },
     {
       rootComponent: path.join(SRC_DIR, "root.tsx"),
-      rootProps: { aliases },
+      rootProps,
       mdxComponents: path.join(SRC_DIR, "mdx-components.tsx"),
     },
   );

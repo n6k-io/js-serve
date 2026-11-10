@@ -7,11 +7,21 @@ import { DataArgError, resolveData } from "./data-args";
 import { bundlePage } from "./bundle";
 import { buildCss } from "./css";
 import { hasWasmExtensions } from "./assets";
-import { reloadClients, startServer, type ServeState } from "./server";
+import { parsePages, type PagesConfig } from "./pages";
+import { PagesSite } from "./pages-site";
+import {
+  reloadPage,
+  startServer,
+  type PageState,
+  type ServeOptions,
+  type ServedPage,
+  type Site,
+} from "./server";
 import { watchFile } from "./watch";
 
-const USAGE =
-  "usage: n6k-serve <page.mdx> [--data [alias=]ws://…]... [--port 3000]";
+const USAGE = `usage: n6k-serve <page.mdx> [--data [alias=]ws://…]... [options]
+       n6k-serve --pages <pages.yml> [options]
+options: [--port 3000] [--host 127.0.0.1] [--origin <origin>]...`;
 
 function fail(message: string): never {
   console.error(message);
@@ -22,59 +32,113 @@ const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
   options: {
     data: { type: "string", multiple: true, default: [] },
+    pages: { type: "string" },
     port: { type: "string", default: "3000" },
+    host: { type: "string", default: "127.0.0.1" },
+    origin: { type: "string", multiple: true, default: [] },
   },
   allowPositionals: true,
   strict: true,
 });
 
-if (positionals.length !== 1) fail(USAGE);
-const mdxPath = path.resolve(positionals[0]);
-if (!mdxPath.endsWith(".mdx")) fail(`${positionals[0]}: not an .mdx file`);
-if (!existsSync(mdxPath)) fail(`${positionals[0]}: no such file`);
 const port = Number(values.port);
 if (!Number.isInteger(port) || port < 0)
   fail(`--port ${values.port}: not a port`);
 if (!hasWasmExtensions())
   fail("n6k duckdb wasm extensions missing from @n6k.io/db");
 
-const dataFlags = values.data ?? [];
+const options: ServeOptions = {
+  hostname: values.host,
+  port,
+  origins: values.origin,
+};
 
-function resolveDataFor(file: string): Record<string, string> {
+if (values.pages === undefined) {
+  if (positionals.length !== 1) fail(USAGE);
+  await servePage(positionals[0]);
+} else {
+  if (positionals.length > 0 || values.data.length > 0) fail(USAGE);
+  servePages(values.pages);
+}
+
+async function servePage(arg: string): Promise<void> {
+  const mdxPath = path.resolve(arg);
+  if (!mdxPath.endsWith(".mdx")) fail(`${arg}: not an .mdx file`);
+  if (!existsSync(mdxPath)) fail(`${arg}: no such file`);
+  const dataFlags = values.data;
+
+  const resolveDataFor = (): Record<string, string> =>
+    resolveData(parseAttachUrls(readFileSync(mdxPath, "utf8")), dataFlags);
+
+  const build = async (aliases: string[]): Promise<PageState> => {
+    const [bundle, css] = await Promise.all([
+      bundlePage(mdxPath, { aliases, dataPath: "/_n6k/data/", token: "" }),
+      buildCss(mdxPath),
+    ]);
+    return { bundle, css };
+  };
+
+  let data: Record<string, string>;
   try {
-    return resolveData(parseAttachUrls(readFileSync(file, "utf8")), dataFlags);
+    data = resolveDataFor();
   } catch (err) {
     if (err instanceof DataArgError) fail(err.message);
     throw err;
   }
-}
+  let state = await build(Object.keys(data));
+  const page: ServedPage = {
+    title: path.basename(mdxPath),
+    key: "",
+    state: () => Promise.resolve(state),
+  };
+  const site: Site = {
+    resolve: (pathname) => ({ kind: "page", page, rest: pathname }),
+    page: (key) => (key === "" ? page : undefined),
+    upstream: (alias) => data[alias],
+  };
+  const server = startServer(site, options);
 
-async function build(data: Record<string, string>): Promise<ServeState> {
-  const [bundle, css] = await Promise.all([
-    bundlePage(mdxPath, Object.keys(data)),
-    buildCss(mdxPath),
-  ]);
-  return { bundle, css, data };
-}
-
-const state = await build(resolveDataFor(mdxPath));
-const server = startServer(mdxPath, port, state);
-
-console.log(`n6k-serve ${server.url}`);
-for (const [alias, url] of Object.entries(state.data)) {
-  console.log(`  ${alias} → ${url}`);
-}
-
-watchFile(mdxPath, async () => {
-  try {
-    const data = resolveData(
-      parseAttachUrls(readFileSync(mdxPath, "utf8")),
-      dataFlags,
-    );
-    Object.assign(state, await build(data));
-    reloadClients(server);
-    console.log(`rebuilt ${path.basename(mdxPath)}`);
-  } catch (err) {
-    console.error(err instanceof Error ? err.message : String(err));
+  console.log(`n6k-serve ${server.url}`);
+  for (const [alias, url] of Object.entries(data)) {
+    console.log(`  ${alias} → ${url}`);
   }
-});
+
+  watchFile(mdxPath, async () => {
+    try {
+      const nextData = resolveDataFor();
+      state = await build(Object.keys(nextData));
+      data = nextData;
+      reloadPage(server, "");
+      console.log(`rebuilt ${path.basename(mdxPath)}`);
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : String(err));
+    }
+  });
+}
+
+function servePages(arg: string): void {
+  const file = path.resolve(arg);
+  const load = (): PagesConfig => parsePages(readFileSync(file, "utf8"), file);
+
+  let config: PagesConfig;
+  try {
+    config = load();
+  } catch (err) {
+    if (err instanceof Error) fail(err.message);
+    throw err;
+  }
+
+  const site = new PagesSite((key) => reloadPage(server, key));
+  site.update(config);
+  const server = startServer(site, options);
+  console.log(`n6k-serve ${server.url}`);
+
+  watchFile(file, () => {
+    try {
+      site.update(load());
+      console.log(`reloaded ${path.basename(file)}`);
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : String(err));
+    }
+  });
+}
