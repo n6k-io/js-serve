@@ -23,5 +23,19 @@ attach:
 The alias is the catalog name on the server: `nyc=ws://…` attaches the
 server's `nyc` catalog as `nyc`. A bare URL attaches the server's `db` catalog.
 
-Every `@n6k.io/ui` component is available in the page without an import. The
-page reloads when the file is saved.
+Every `@n6k.io/ui` component and control is available in the page without an
+import. Controls are declared with directives, e.g.
+`::Slider[n]{label="N" min=1 max=10 default=5}`, and read as `{n}`. The page
+reloads when the file is saved.
+
+## MCP
+
+```sh
+claude mcp add n6k-serve -- bunx @n6k.io/serve --mcp
+claude mcp add n6k-serve -- bunx @n6k.io/serve --mcp --port 4000
+```
+
+`--mcp` serves pages at `/<page>/` and is driven over stdio by one MCP client.
+It takes `--port`, `--host` and `--origin`, not `--data` or `--pages`. Data
+sources and pages are set with MCP tools (see `tools/list`); frontmatter
+`attach:` is ignored. The process exits when stdin closes.

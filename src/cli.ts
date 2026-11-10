@@ -18,9 +18,12 @@ import {
   type Site,
 } from "./server";
 import { watchFile } from "./watch";
+import { McpSite, startMcp } from "./mcp";
+import pkg from "../package.json";
 
 const USAGE = `usage: n6k-serve <page.mdx> [--data [alias=]ws://…]... [options]
        n6k-serve --pages <pages.yml> [options]
+       n6k-serve --mcp [options]
 options: [--port 3000] [--host 127.0.0.1] [--origin <origin>]...`;
 
 function fail(message: string): never {
@@ -33,6 +36,7 @@ const { values, positionals } = parseArgs({
   options: {
     data: { type: "string", multiple: true, default: [] },
     pages: { type: "string" },
+    mcp: { type: "boolean", default: false },
     port: { type: "string", default: "3000" },
     host: { type: "string", default: "127.0.0.1" },
     origin: { type: "string", multiple: true, default: [] },
@@ -53,7 +57,15 @@ const options: ServeOptions = {
   origins: values.origin,
 };
 
-if (values.pages === undefined) {
+if (values.mcp) {
+  if (
+    positionals.length > 0 ||
+    values.pages !== undefined ||
+    values.data.length > 0
+  )
+    fail(USAGE);
+  serveMcp();
+} else if (values.pages === undefined) {
   if (positionals.length !== 1) fail(USAGE);
   await servePage(positionals[0]);
 } else {
@@ -72,7 +84,7 @@ async function servePage(arg: string): Promise<void> {
 
   const build = async (aliases: string[]): Promise<PageState> => {
     const [bundle, css] = await Promise.all([
-      bundlePage(mdxPath, { aliases, dataPath: "/_n6k/data/", token: "" }),
+      bundlePage(mdxPath, { aliases, dataPath: "/_n6k/data/", tokens: {} }),
       buildCss(mdxPath),
     ]);
     return { bundle, css };
@@ -98,9 +110,9 @@ async function servePage(arg: string): Promise<void> {
   };
   const server = startServer(site, options);
 
-  console.log(`n6k-serve ${server.url}`);
+  console.error(`n6k-serve ${server.url}`);
   for (const [alias, url] of Object.entries(data)) {
-    console.log(`  ${alias} → ${url}`);
+    console.error(`  ${alias} → ${url}`);
   }
 
   watchFile(mdxPath, async () => {
@@ -109,7 +121,7 @@ async function servePage(arg: string): Promise<void> {
       state = await build(Object.keys(nextData));
       data = nextData;
       reloadPage(server, "");
-      console.log(`rebuilt ${path.basename(mdxPath)}`);
+      console.error(`rebuilt ${path.basename(mdxPath)}`);
     } catch (err) {
       console.error(err instanceof Error ? err.message : String(err));
     }
@@ -131,14 +143,21 @@ function servePages(arg: string): void {
   const site = new PagesSite((key) => reloadPage(server, key));
   site.update(config);
   const server = startServer(site, options);
-  console.log(`n6k-serve ${server.url}`);
+  console.error(`n6k-serve ${server.url}`);
 
   watchFile(file, () => {
     try {
       site.update(load());
-      console.log(`reloaded ${path.basename(file)}`);
+      console.error(`reloaded ${path.basename(file)}`);
     } catch (err) {
       console.error(err instanceof Error ? err.message : String(err));
     }
   });
+}
+
+function serveMcp(): void {
+  const site = new McpSite((key) => reloadPage(server, key));
+  const server = startServer(site, options);
+  console.error(`n6k-serve ${server.url}`);
+  startMcp(site, server, pkg.version, () => process.exit(0));
 }

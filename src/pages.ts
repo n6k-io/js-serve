@@ -31,7 +31,7 @@ function string(value: unknown, where: string): string {
   return value;
 }
 
-function name(value: string, where: string): string {
+export function name(value: string, where: string): string {
   if (!NAME.test(value))
     throw new PagesError(
       `${where}: ${JSON.stringify(value)} must match ${NAME.source}`,

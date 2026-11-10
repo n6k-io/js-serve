@@ -18,7 +18,7 @@ export type Bundle = Map<string, string>;
 export type RootProps = {
   aliases: string[];
   dataPath: string;
-  token: string;
+  tokens: Record<string, string>;
 };
 
 export async function bundlePage(

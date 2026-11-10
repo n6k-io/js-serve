@@ -15,11 +15,15 @@ function dataSocket(url: string, token: string): SocketSpec {
   };
 }
 
-function engine(aliases: string[], dataPath: string, token: string): N6kDuckDB {
+function engine(
+  aliases: string[],
+  dataPath: string,
+  tokens: Record<string, string>,
+): N6kDuckDB {
   const sockets: Record<string, SocketSpec> = {};
   const databases: Record<string, DatabaseSpec> = {};
   for (const alias of aliases) {
-    sockets[alias] = dataSocket(`${dataPath}${alias}`, token);
+    sockets[alias] = dataSocket(`${dataPath}${alias}`, tokens[alias] ?? "");
     databases[alias] = { socket: alias };
   }
   return new N6kDuckDB({
@@ -35,14 +39,14 @@ export default function Root({
   children,
   aliases = [],
   dataPath = "/_n6k/data/",
-  token = "",
+  tokens = {},
 }: {
   children: ReactNode;
   aliases?: string[];
   dataPath?: string;
-  token?: string;
+  tokens?: Record<string, string>;
 }) {
-  const [duckdb] = useState(() => engine(aliases, dataPath, token));
+  const [duckdb] = useState(() => engine(aliases, dataPath, tokens));
   return (
     <QueryProvider>
       <DuckDBProvider connect={duckdb.connect} metadataFns={duckdb.metadataFns}>
