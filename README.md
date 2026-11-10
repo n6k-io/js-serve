@@ -1,6 +1,6 @@
 # @n6k.io/serve
 
-Serve a single `.mdx` page in the browser with live data from
+Serve `.mdx` pages in the browser with live data from
 [n6kd](https://github.com/n6k-io/n6kd) or pykit `n6k database`.
 
 ```sh

@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@n6k.io/ui/components/ui/select";
 
-// Passed to the build as `mdxComponents` (src/bundle.ts). A tag that is neither
+// Passed to the build as `mdxComponents`. A tag that is neither
 // here nor imported by the page still builds and fails at render.
 // `Controls` is the name @n6k.io/build's remark-controls emits for `::X[…]`.
 export function useMDXComponents(components: MDXComponents): MDXComponents {

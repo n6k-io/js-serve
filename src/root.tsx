@@ -23,7 +23,10 @@ function engine(
   const sockets: Record<string, SocketSpec> = {};
   const databases: Record<string, DatabaseSpec> = {};
   for (const alias of aliases) {
-    sockets[alias] = dataSocket(`${dataPath}${alias}`, tokens[alias] ?? "");
+    sockets[alias] = dataSocket(
+      `${dataPath}${alias}`,
+      Object.hasOwn(tokens, alias) ? tokens[alias]! : "",
+    );
     databases[alias] = { socket: alias };
   }
   return new N6kDuckDB({

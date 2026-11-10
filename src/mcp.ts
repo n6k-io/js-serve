@@ -227,7 +227,7 @@ export function startMcp(
         throw new PagesError(
           `alias ${JSON.stringify(alias)} must match ${ALIAS.source}`,
         );
-      if (!/^wss?:\/\//.test(url))
+      if (!URL.canParse(url) || !/^wss?:$/.test(new URL(url).protocol))
         throw new PagesError(
           `${JSON.stringify(url)} is not a ws:// or wss:// URL`,
         );

@@ -30,7 +30,6 @@ function mime(file: string): string {
   return N6K_WASM_MIME[path.extname(file)] ?? "application/octet-stream";
 }
 
-// duckdb runtime, n6k driver workers, n6k duckdb extensions and fontsource fonts; undefined if `pathname` is none of them.
 export async function serveAsset(
   pathname: string,
 ): Promise<Response | undefined> {

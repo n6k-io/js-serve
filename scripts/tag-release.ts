@@ -1,5 +1,8 @@
-// Tags origin/main HEAD (or USE_REF, any commit on origin/main) with v<package.json version>.
-// Does not push. Set DRY_RUN=1 to print the plan only.
+// Creates annotated tag v<version> (version from package.json at the target commit). Does not push.
+// Target: USE_REF (must be on origin/main), else HEAD, which must be a clean `main` equal to origin/main.
+// Fails unless ci.yml's push run on the target succeeded and the version is not on npm.
+// Exits 0 without tagging if the tag already points at the target; fails if it points elsewhere.
+// DRY_RUN=1 runs every check (fetch, gh, npm) but does not create the tag.
 import { $ } from "bun";
 
 class TagError extends Error {}
