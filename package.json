@@ -1,6 +1,6 @@
 {
   "name": "@n6k.io/serve",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "private": false,
   "description": "Serve .mdx pages with live data from n6kd or pykit",
   "repository": "https://github.com/n6k-io/js-serve",
@@ -29,7 +29,8 @@
     "@n6k.io/db": "^0.13.1",
     "@n6k.io/runtime": "^0.1.2",
     "@n6k.io/ui": "^0.10.6",
-    "@tailwindcss/cli": "^4.3.3",
+    "@tailwindcss/node": "^4.3.5",
+    "@tailwindcss/oxide": "^4.3.5",
     "@tailwindcss/typography": "^0.5.20",
     "@tanstack/react-query": "^5.104.1",
     "esbuild": "^0.28.2",
