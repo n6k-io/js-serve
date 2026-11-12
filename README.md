@@ -7,8 +7,12 @@ Serve `.mdx` pages in the browser with live data from
 n6k-serve page.mdx                                  # no data
 n6k-serve page.mdx --data ws://localhost:8080/ws    # attached as `db`
 n6k-serve page.mdx --data nyc=ws://localhost:8080/ws --data sales=ws://localhost:7823/ws
+n6k-serve page.mdx --data nyc=ws://<token>@localhost:8080/ws   # token sent to the server
 n6k-serve page.mdx --port 3000                      # default 3000
 ```
+
+A token in `--data` is removed from the URL and sent as the connection token.
+Frontmatter `attach:` URLs may not carry one.
 
 Or in the page's frontmatter (`--data` wins for the same alias):
 

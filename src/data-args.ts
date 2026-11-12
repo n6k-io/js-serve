@@ -3,6 +3,8 @@ const DEFAULT_ALIAS = "db";
 
 export class DataArgError extends Error {}
 
+export type DataSource = { url: string; token: string };
+
 function checked(alias: string, url: string, source: string): [string, string] {
   if (!ALIAS.test(alias)) {
     throw new DataArgError(
@@ -26,19 +28,40 @@ function parseFlag(flag: string): [string, string] {
   return checked(flag.slice(0, eq), flag.slice(eq + 1), "--data");
 }
 
-// Alias → URL. The alias is also the server catalog name the client attaches.
+function splitToken(raw: string, source: string): DataSource {
+  if (!URL.canParse(raw)) {
+    throw new DataArgError(`${source}: ${JSON.stringify(raw)} is not a URL`);
+  }
+  const url = new URL(raw);
+  if (!url.username && !url.password) return { url: raw, token: "" };
+  if (source !== "--data") {
+    throw new DataArgError(
+      `${source}: credentials in ${JSON.stringify(url.host)} are only accepted from --data`,
+    );
+  }
+  if (url.password) {
+    throw new DataArgError(
+      `${source}: use ws://<token>@host, not user:password`,
+    );
+  }
+  const token = decodeURIComponent(url.username);
+  url.username = "";
+  return { url: url.href, token };
+}
+
+// Alias → source. The alias is also the server catalog name the client attaches.
 export function resolveData(
   frontmatterUrls: Record<string, string>,
   dataFlags: string[],
-): Record<string, string> {
-  const out: Record<string, string> = {};
+): Record<string, DataSource> {
+  const out: Record<string, DataSource> = {};
   for (const [alias, url] of Object.entries(frontmatterUrls)) {
     const [a, u] = checked(alias, url, "attach:");
-    out[a] = u;
+    out[a] = splitToken(u, "attach:");
   }
   for (const flag of dataFlags) {
     const [a, u] = parseFlag(flag);
-    out[a] = u;
+    out[a] = splitToken(u, "--data");
   }
   return out;
 }

@@ -1,4 +1,3 @@
-import type { ServerWebSocket } from "bun";
 import type { Bundle } from "./bundle";
 import { serveAsset } from "./assets";
 
@@ -21,7 +20,6 @@ export type Resolved =
 export type Site = {
   resolve: (pathname: string) => Resolved | undefined;
   page: (key: string) => ServedPage | undefined;
-  upstream: (path: string) => string | undefined;
 };
 
 export type ServeOptions = {
@@ -30,16 +28,7 @@ export type ServeOptions = {
   origins: string[];
 };
 
-type SocketData =
-  | { kind: "reload"; key: string }
-  | {
-      kind: "data";
-      url: string;
-      upstream?: WebSocket;
-      pending: Frame[];
-    };
-
-type Frame = string | Uint8Array<ArrayBuffer>;
+type SocketData = { key: string };
 
 const ISOLATION = {
   "Cross-Origin-Opener-Policy": "same-origin",
@@ -47,7 +36,6 @@ const ISOLATION = {
 };
 
 const RELOAD_PREFIX = "/_n6k/reload/";
-const DATA_PREFIX = "/_n6k/data/";
 
 function topicFor(key: string): string {
   return `reload:${key}`;
@@ -96,26 +84,6 @@ function contentType(file: string): string {
   return "application/octet-stream";
 }
 
-function openUpstream(ws: ServerWebSocket<SocketData>): void {
-  const data = ws.data;
-  if (data.kind !== "data") return;
-  const upstream = new WebSocket(data.url);
-  upstream.binaryType = "arraybuffer";
-  data.upstream = upstream;
-  upstream.addEventListener("open", () => {
-    for (const msg of data.pending) upstream.send(msg);
-    data.pending = [];
-  });
-  upstream.addEventListener("message", (ev) => {
-    ws.send(typeof ev.data === "string" ? ev.data : new Uint8Array(ev.data));
-  });
-  upstream.addEventListener("close", (ev) => ws.close(1000, ev.reason));
-  upstream.addEventListener("error", () => {
-    console.error(`[n6k-serve] upstream ${data.url} failed`);
-    ws.close(1011, `upstream ${data.url} failed`);
-  });
-}
-
 async function servePage(
   page: ServedPage,
   rest: string,
@@ -156,26 +124,13 @@ export function startServer(site: Site, options: ServeOptions) {
     async fetch(req, server) {
       const { pathname } = new URL(req.url);
 
-      if (
-        (pathname.startsWith(RELOAD_PREFIX) ||
-          pathname.startsWith(DATA_PREFIX)) &&
-        !originAllowed(req)
-      ) {
-        return new Response("origin not allowed", { status: 403 });
-      }
       if (pathname.startsWith(RELOAD_PREFIX)) {
+        if (!originAllowed(req))
+          return new Response("origin not allowed", { status: 403 });
         const key = pathname.slice(RELOAD_PREFIX.length);
         if (!site.page(key))
           return new Response(`no page ${key}`, { status: 404 });
-        if (server.upgrade(req, { data: { kind: "reload", key } })) return;
-        return new Response("upgrade required", { status: 426 });
-      }
-      if (pathname.startsWith(DATA_PREFIX)) {
-        const rest = pathname.slice(DATA_PREFIX.length);
-        const url = site.upstream(rest);
-        if (!url) return new Response(`no data ${rest}`, { status: 404 });
-        if (server.upgrade(req, { data: { kind: "data", url, pending: [] } }))
-          return;
+        if (server.upgrade(req, { data: { key } })) return;
         return new Response("upgrade required", { status: 426 });
       }
 
@@ -193,23 +148,9 @@ export function startServer(site: Site, options: ServeOptions) {
     },
     websocket: {
       open(ws) {
-        if (ws.data.kind === "reload") ws.subscribe(topicFor(ws.data.key));
-        else openUpstream(ws);
+        ws.subscribe(topicFor(ws.data.key));
       },
-      message(ws, msg) {
-        const data = ws.data;
-        if (data.kind !== "data") return;
-        const frame: Frame =
-          typeof msg === "string" ? msg : new Uint8Array(msg);
-        if (data.upstream?.readyState === WebSocket.OPEN) {
-          data.upstream.send(frame);
-        } else {
-          data.pending.push(frame);
-        }
-      },
-      close(ws) {
-        if (ws.data.kind === "data") ws.data.upstream?.close();
-      },
+      message() {},
     },
   });
 }

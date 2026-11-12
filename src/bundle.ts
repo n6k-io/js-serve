@@ -16,8 +16,7 @@ import {
 export type Bundle = Map<string, string>;
 
 export type RootProps = {
-  aliases: string[];
-  dataPath: string;
+  data: Record<string, string>;
   tokens: Record<string, string>;
 };
 
