@@ -14,7 +14,7 @@ export async function buildCss(mdxPath: string): Promise<string> {
   const base = readFileSync(path.join(SRC_DIR, "globals.css"), "utf8");
   await Bun.write(
     input,
-    `${base}\n@source ${JSON.stringify(path.dirname(mdxPath))};\n`,
+    `${base}\n@source ${JSON.stringify(SRC_DIR)};\n@source ${JSON.stringify(path.dirname(mdxPath))};\n`,
   );
   const proc = Bun.spawn([TAILWIND, "-i", input, "-o", output], {
     stdout: "ignore",
