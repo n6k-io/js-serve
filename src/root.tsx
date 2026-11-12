@@ -5,28 +5,17 @@ import { N6kDuckDB, type DatabaseSpec, type SocketSpec } from "@n6k.io/db";
 import { DuckDBProvider, QueryProvider } from "@n6k.io/ui/duckdb";
 import { ConnectionLost, DuckDBConnectionGuard } from "@n6k.io/runtime";
 
-function dataSocket(url: string, token: string): SocketSpec {
-  return {
-    connect: () => {
-      const scheme = location.protocol === "https:" ? "wss" : "ws";
-      return new WebSocket(`${scheme}://${location.host}${url}`);
-    },
-    token,
-  };
-}
-
 function engine(
-  aliases: string[],
-  dataPath: string,
+  data: Record<string, string>,
   tokens: Record<string, string>,
 ): N6kDuckDB {
   const sockets: Record<string, SocketSpec> = {};
   const databases: Record<string, DatabaseSpec> = {};
-  for (const alias of aliases) {
-    sockets[alias] = dataSocket(
-      `${dataPath}${alias}`,
-      Object.hasOwn(tokens, alias) ? tokens[alias]! : "",
-    );
+  for (const [alias, url] of Object.entries(data)) {
+    sockets[alias] = {
+      connect: () => new WebSocket(url),
+      token: Object.hasOwn(tokens, alias) ? tokens[alias]! : "",
+    };
     databases[alias] = { socket: alias };
   }
   return new N6kDuckDB({
@@ -40,16 +29,14 @@ function engine(
 
 export default function Root({
   children,
-  aliases = [],
-  dataPath = "/_n6k/data/",
+  data = {},
   tokens = {},
 }: {
   children: ReactNode;
-  aliases?: string[];
-  dataPath?: string;
+  data?: Record<string, string>;
   tokens?: Record<string, string>;
 }) {
-  const [duckdb] = useState(() => engine(aliases, dataPath, tokens));
+  const [duckdb] = useState(() => engine(data, tokens));
   return (
     <QueryProvider>
       <DuckDBProvider connect={duckdb.connect} metadataFns={duckdb.metadataFns}>

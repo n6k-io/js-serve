@@ -55,24 +55,17 @@ export class PagesSite implements Site {
 
   page: Site["page"] = (key) => this.entries.get(key)?.served;
 
-  upstream: Site["upstream"] = (rest) => {
-    const [app, catalog] = rest.split("/");
-    const gateway = this.config[app]?.gateway;
-    if (!gateway?.catalogs.includes(catalog)) return;
-    return gateway.url;
-  };
-
   private add(ref: PageRef): void {
     const key = keyOf(ref);
     const file = this.config[ref.app].pages[ref.page];
-    const { token, catalogs } = this.config[ref.app].gateway;
+    const { url, token, catalogs } = this.config[ref.app].gateway;
     const entry: Entry = {
       served: {
         title: path.basename(file),
         key,
         state: () => {
           if (entry.cached) return entry.cached;
-          const built = this.build(file, ref.app, catalogs, token);
+          const built = this.build(file, url, catalogs, token);
           entry.cached = built;
           built.catch(() => {
             if (entry.cached === built) entry.cached = undefined;
@@ -104,14 +97,13 @@ export class PagesSite implements Site {
 
   private async build(
     file: string,
-    app: string,
+    url: string,
     catalogs: string[],
     token: string,
   ): Promise<PageState> {
     const [bundle, css] = await Promise.all([
       bundlePage(file, {
-        aliases: catalogs,
-        dataPath: `/_n6k/data/${app}/`,
+        data: Object.fromEntries(catalogs.map((c) => [c, url])),
         tokens: Object.fromEntries(catalogs.map((c) => [c, token])),
       }),
       buildCss(file),

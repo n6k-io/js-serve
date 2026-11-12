@@ -148,8 +148,6 @@ test("mcp serves inline and path pages", async () => {
   const pages = JSON.parse(listed.text) as { page: string }[];
   expect(pages.map((p) => p.page).toSorted()).toEqual(["bad", "f", "p"]);
 
-  const data = new URL("/_n6k/data/db", url);
-  expect(await status(data)).toBe(404);
   expect(await body(js)).not.toContain("tok-secret");
   expect(
     await failed("set_data", { alias: "1x", url: "ws://x", token: "t" }),
@@ -164,11 +162,11 @@ test("mcp serves inline and path pages", async () => {
       token: "tok-secret",
     }),
   ).toBe(false);
-  expect(await status(data)).toBe(426);
   expect(await body(js)).toContain("tok-secret");
+  expect(await body(js)).toContain("ws://127.0.0.1:1/ws");
   expect(await failed("remove_data", { alias: "db" })).toBe(false);
-  expect(await status(data)).toBe(404);
   expect(await body(js)).not.toContain("tok-secret");
+  expect(await body(js)).not.toContain("ws://127.0.0.1:1/ws");
   expect(await failed("remove_data", { alias: "db" })).toBe(true);
 
   expect(await failed("remove_page", { page: "p" })).toBe(false);

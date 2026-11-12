@@ -7,13 +7,11 @@ import { z } from "zod";
 import { bundlePage } from "./bundle";
 import { buildCss } from "./css";
 import { describeComponent, searchComponents } from "./component-docs";
-import { ALIAS } from "./data-args";
+import { ALIAS, type DataSource } from "./data-args";
 import { INSTRUCTIONS } from "./mcp-instructions";
 import { PagesError, name } from "./pages";
 import type { PageState, ServedPage, Server, Site } from "./server";
 import { watchFile } from "./watch";
-
-export type DataSource = { url: string; token: string };
 
 type Entry = {
   file: string;
@@ -50,8 +48,6 @@ export class McpSite implements Site {
   };
 
   page: Site["page"] = (key) => this.entries.get(key)?.served;
-
-  upstream: Site["upstream"] = (alias) => this.data.get(alias)?.url;
 
   setData(alias: string, source: DataSource): void {
     this.data.set(alias, source);
@@ -118,8 +114,9 @@ export class McpSite implements Site {
   private async build(file: string): Promise<PageState> {
     const [bundle, css] = await Promise.all([
       bundlePage(file, {
-        aliases: [...this.data.keys()],
-        dataPath: "/_n6k/data/",
+        data: Object.fromEntries(
+          [...this.data].map(([alias, { url }]) => [alias, url]),
+        ),
         tokens: Object.fromEntries(
           [...this.data].map(([alias, { token }]) => [alias, token]),
         ),
