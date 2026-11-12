@@ -67,6 +67,7 @@ if (positionals[0] === "sql") {
     fail(USAGE);
   await servePage(
     path.join(SRC_DIR, "sql", values.console ? "console.mdx" : "editor.mdx"),
+    true,
   );
 } else if (values.mcp) {
   if (
@@ -84,7 +85,7 @@ if (positionals[0] === "sql") {
   servePages(values.pages);
 }
 
-async function servePage(arg: string): Promise<void> {
+async function servePage(arg: string, bare = false): Promise<void> {
   const mdxPath = path.resolve(arg);
   if (!mdxPath.endsWith(".mdx")) fail(`${arg}: not an .mdx file`);
   if (!existsSync(mdxPath)) fail(`${arg}: no such file`);
@@ -101,6 +102,7 @@ async function servePage(arg: string): Promise<void> {
       bundlePage(mdxPath, {
         data: Object.fromEntries(entries.map(([a, s]) => [a, s.url])),
         tokens: Object.fromEntries(entries.map(([a, s]) => [a, s.token])),
+        bare,
       }),
       buildCss(mdxPath),
     ]);

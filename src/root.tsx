@@ -4,6 +4,7 @@ import { duckdbBundle } from "virtual:n6k-duckdb-bundle";
 import { N6kDuckDB, type DatabaseSpec, type SocketSpec } from "@n6k.io/db";
 import { DuckDBProvider, QueryProvider } from "@n6k.io/ui/duckdb";
 import { ConnectionLost, DuckDBConnectionGuard } from "@n6k.io/runtime";
+import { Page } from "@n6k.io/ui/components";
 
 function engine(
   data: Record<string, string>,
@@ -31,16 +32,20 @@ export default function Root({
   children,
   data = {},
   tokens = {},
+  bare = false,
 }: {
   children: ReactNode;
   data?: Record<string, string>;
   tokens?: Record<string, string>;
+  bare?: boolean;
 }) {
   const [duckdb] = useState(() => engine(data, tokens));
   return (
     <QueryProvider>
       <DuckDBProvider connect={duckdb.connect} metadataFns={duckdb.metadataFns}>
-        <DuckDBConnectionGuard>{children}</DuckDBConnectionGuard>
+        <DuckDBConnectionGuard>
+          {bare ? children : <Page>{children}</Page>}
+        </DuckDBConnectionGuard>
         <ConnectionLost duckdb={duckdb} />
       </DuckDBProvider>
     </QueryProvider>
