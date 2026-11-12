@@ -11,6 +11,7 @@ import {
   SERVE_ROOT,
   SRC_DIR,
   nearestNodeModules,
+  servePackageDir,
 } from "./paths";
 
 export type Bundle = Map<string, string>;
@@ -47,8 +48,8 @@ export async function bundlePage(
     absWorkingDir: SERVE_ROOT,
     tsconfig: path.join(SERVE_ROOT, "tsconfig.json"),
     nodePaths: [
-      SERVE_NODE_MODULES,
-      ...(pageNodeModules && pageNodeModules !== SERVE_NODE_MODULES
+      ...SERVE_NODE_MODULES,
+      ...(pageNodeModules && !SERVE_NODE_MODULES.includes(pageNodeModules)
         ? [pageNodeModules]
         : []),
     ],
@@ -60,8 +61,8 @@ export async function bundlePage(
       n6kDuckDBPlugin(undefined, { used: false }),
     ],
     alias: {
-      react: path.join(SERVE_NODE_MODULES, "react"),
-      "react-dom": path.join(SERVE_NODE_MODULES, "react-dom"),
+      react: servePackageDir("react"),
+      "react-dom": servePackageDir("react-dom"),
     },
   });
 

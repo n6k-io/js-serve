@@ -40,9 +40,9 @@ export async function serveAsset(
     });
   }
   if (pathname.startsWith("/files/")) {
-    const font = findFontFile(
-      SERVE_NODE_MODULES,
-      pathname.slice("/files/".length),
+    const name = pathname.slice("/files/".length);
+    const font = SERVE_NODE_MODULES.map((dir) => findFontFile(dir, name)).find(
+      Boolean,
     );
     if (font) {
       return new Response(Bun.file(font), {
