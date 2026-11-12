@@ -1,6 +1,6 @@
 {
   "name": "@n6k.io/serve",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "private": false,
   "description": "Serve .mdx pages with live data from n6kd or pykit",
   "repository": "https://github.com/n6k-io/js-serve",
