@@ -3,15 +3,12 @@ import { wasmDir } from "@n6k.io/db/wasm-dir";
 import {
   N6K_DUCKDB_FILES,
   N6K_WASM_MIME,
-  N6K_WORKER_DEV_URLS,
-  bundleN6kWorker,
   collectN6kWasmFiles,
   findFontFile,
   n6kDuckDBUrl,
   resolveDuckDBDist,
-  resolveN6kWorkerSource,
 } from "@n6k.io/build/pipeline";
-import { SERVE_NODE_MODULES, SERVE_ROOT } from "./paths";
+import { SERVE_NODE_MODULES } from "./paths";
 
 const SAME_ORIGIN = { "Cross-Origin-Resource-Policy": "same-origin" };
 
@@ -49,19 +46,6 @@ export async function serveAsset(
         headers: { "Content-Type": "font/woff2", ...SAME_ORIGIN },
       });
     }
-  }
-  const workerRel = N6K_WORKER_DEV_URLS[pathname];
-  if (workerRel) {
-    const code = await bundleN6kWorker(
-      resolveN6kWorkerSource(workerRel, SERVE_ROOT),
-    );
-    return new Response(code, {
-      headers: {
-        "Content-Type": "text/javascript",
-        "Cache-Control": "no-store",
-        ...SAME_ORIGIN,
-      },
-    });
   }
   return undefined;
 }

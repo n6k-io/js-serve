@@ -2,7 +2,6 @@ import path from "node:path";
 import * as esbuild from "esbuild";
 import {
   n6kDuckDBPlugin,
-  n6kWorkersPlugin,
   preprocess,
   virtualModulesPlugin,
 } from "@n6k.io/build/pipeline";
@@ -57,7 +56,6 @@ export async function bundlePage(
     logLevel: "silent",
     plugins: [
       virtualModulesPlugin(modules, mdxDir),
-      n6kWorkersPlugin(undefined, { used: false }),
       n6kDuckDBPlugin(undefined, { used: false }),
     ],
     alias: {
