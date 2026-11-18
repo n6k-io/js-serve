@@ -25,6 +25,9 @@ fresh access token on each connect. A source whose server does not offer
 sign-in is an error. The sign-in is saved in the OS credential store and reused
 on the next start.
 
+With `--oidc-login`, n6k-serve prints a URL with a per-launch `?secret=`. Open
+that URL: it sets a cookie, and the token route refuses requests without it.
+
 ```sh
 n6k-serve logout                      # list saved sign-ins
 n6k-serve logout ws://localhost:8080  # sign out of the sign-in that server uses

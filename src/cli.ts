@@ -10,6 +10,7 @@ import { hasWasmExtensions } from "./assets";
 import { parsePages, type PagesConfig } from "./pages";
 import { PagesSite } from "./pages-site";
 import {
+  SECRET_PARAM,
   reloadPage,
   startServer,
   type PageState,
@@ -164,12 +165,20 @@ async function servePage(arg: string, bare = false): Promise<void> {
     resolve: (pathname) => ({ kind: "page", page, rest: pathname }),
     page: (key) => (key === "" ? page : undefined),
   };
+  const secret = logins
+    ? Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString(
+        "base64url",
+      )
+    : undefined;
   const server = startServer(site, {
     ...options,
     token: (alias) => sessions.get(alias)?.token(),
+    secret,
   });
 
-  console.error(`n6k-serve ${server.url}`);
+  const url = new URL(server.url);
+  if (secret) url.searchParams.set(SECRET_PARAM, secret);
+  console.error(`n6k-serve ${url}`);
   const flagged = new Set(Object.keys(resolveData({}, dataFlags)));
   const rows = Object.entries(data).map(([alias, { url }]) => {
     const tags = [flagged.has(alias) ? "--data" : "attach:"];
