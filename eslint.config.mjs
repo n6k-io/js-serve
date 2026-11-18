@@ -36,15 +36,6 @@ export default [
       "unicorn/catch-error-name": "off",
       "unicorn/prefer-global-this": "off",
       "unicorn/no-nested-ternary": "off",
-      // `this` is the legitimate context in Vite/rollup plugin hooks — this rule
-      // (new in unicorn 65) flags those as false positives.
-      "unicorn/no-this-outside-of-class": "off",
-      // DuckDB `conn.query()` returns an Apache Arrow `Table`, whose `.toArray()`
-      // yields a plain array. This rule (new in unicorn 65) assumes the receiver
-      // is a JS iterator helper and rewrites `t.toArray().map(fn)` →
-      // `t.map(fn).toArray()`, but Arrow `Table` has no `.map` — the rewrite
-      // would crash. False positive for our query code; disable it.
-      "unicorn/prefer-iterator-to-array-at-end": "off",
     },
   },
   {

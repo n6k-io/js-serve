@@ -19,6 +19,7 @@ export type SavedLogin = {
   servers: string[];
 };
 
+// describe() splits at the last space: a clientId containing a space is misparsed.
 export function loginKey(issuer: string, clientId: string): string {
   return `${issuer} ${clientId}`;
 }

@@ -57,6 +57,6 @@ claude mcp add n6k-serve -- bunx @n6k.io/serve --mcp --port 4000
 ```
 
 `--mcp` serves pages at `/<page>/` and is driven over stdio by one MCP client.
-It takes `--port`, `--host` and `--origin`, not `--data` or `--pages`. Data
+It takes only `--port`, `--host` and `--origin`. Data
 sources and pages are set with MCP tools (see `tools/list`); frontmatter
 `attach:` is ignored. The process exits when stdin closes.

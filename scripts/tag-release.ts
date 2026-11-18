@@ -1,7 +1,9 @@
 // Creates annotated tag v<version> (version from package.json at the target commit). Does not push.
 // Target: USE_REF (must be on origin/main), else HEAD, which must be a clean `main` equal to origin/main.
-// Fails unless ci.yml's push run on the target succeeded and the version is not on npm.
-// Exits 0 without tagging if the tag already points at the target; fails if it points elsewhere.
+// Fails unless gh is authenticated, the latest ci.yml push run on main for the target succeeded,
+// the version is x.y.z, and npm returns 404 for it (any other status fails).
+// Exits 0 without tagging if the tag already points at the target; fails if it points elsewhere
+// or the local and origin tags differ.
 // DRY_RUN=1 runs every check (fetch, gh, npm) but does not create the tag.
 import { $ } from "bun";
 
