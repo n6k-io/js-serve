@@ -26,6 +26,7 @@ export type ServeOptions = {
   hostname: string;
   port: number;
   origins: string[];
+  token?: (alias: string) => Promise<string> | undefined;
 };
 
 type SocketData = { key: string };
@@ -36,6 +37,7 @@ const ISOLATION = {
 };
 
 const RELOAD_PREFIX = "/_n6k/reload/";
+export const TOKEN_PREFIX = "/_n6k/token/";
 
 function topicFor(key: string): string {
   return `reload:${key}`;
@@ -113,6 +115,23 @@ async function servePage(
   );
 }
 
+async function serveToken(
+  options: ServeOptions,
+  alias: string,
+): Promise<Response> {
+  const pending = options.token?.(alias);
+  if (!pending) return new Response(`no token for ${alias}`, { status: 404 });
+  try {
+    return new Response(await pending, {
+      headers: { "Content-Type": "text/plain", "Cache-Control": "no-store" },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`token for ${alias}: ${message}`);
+    return new Response(message, { status: 502 });
+  }
+}
+
 export function startServer(site: Site, options: ServeOptions) {
   const originAllowed = (req: Request): boolean =>
     options.origins.length === 0 ||
@@ -132,6 +151,12 @@ export function startServer(site: Site, options: ServeOptions) {
           return new Response(`no page ${key}`, { status: 404 });
         if (server.upgrade(req, { data: { key } })) return;
         return new Response("upgrade required", { status: 426 });
+      }
+
+      if (pathname.startsWith(TOKEN_PREFIX)) {
+        if (!originAllowed(req))
+          return new Response("origin not allowed", { status: 403 });
+        return serveToken(options, pathname.slice(TOKEN_PREFIX.length));
       }
 
       const resolved = site.resolve(pathname);

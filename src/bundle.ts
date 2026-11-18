@@ -18,6 +18,7 @@ export type Bundle = Map<string, string>;
 export type RootProps = {
   data: Record<string, string>;
   tokens: Record<string, string>;
+  oidc?: string[];
   bare?: boolean;
 };
 
