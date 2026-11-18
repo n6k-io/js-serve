@@ -7,10 +7,10 @@
       "dependencies": {
         "@duckdb/duckdb-wasm": "1.33.1-dev114.0",
         "@modelcontextprotocol/server": "^2.4.0",
-        "@n6k.io/build": "^0.5.1",
-        "@n6k.io/db": "^0.13.1",
-        "@n6k.io/runtime": "^0.1.2",
-        "@n6k.io/ui": "^0.10.6",
+        "@n6k.io/build": "^0.6.0",
+        "@n6k.io/db": "^0.13.3",
+        "@n6k.io/runtime": "^0.1.3",
+        "@n6k.io/ui": "^0.11.0",
         "@tailwindcss/node": "^4.3.5",
         "@tailwindcss/oxide": "^4.3.5",
         "@tailwindcss/typography": "^0.5.20",
@@ -251,13 +251,13 @@
 
     "@msgpack/msgpack": ["@msgpack/msgpack@3.1.3", "", {}, "sha512-47XIizs9XZXvuJgoaJUIE2lFoID8ugvc0jzSHP+Ptfk8nTbnR8g788wv48N03Kx0UkAv559HWRQ3yzOgzlRNUA=="],
 
-    "@n6k.io/build": ["@n6k.io/build@0.5.1", "", { "dependencies": { "@mdx-js/mdx": "^3.1.1", "@shikijs/rehype": "^4.3.0", "estree-util-value-to-estree": "^3.5.0", "handlebars": "^4.7.8", "pino": "^10.3.1", "pino-pretty": "^13.1.3", "remark-directive": "^4.0.0", "remark-frontmatter": "^5.0.0", "remark-gfm": "^4.0.1", "remark-mdx-frontmatter": "^5.2.0", "shiki": "^4.3.0", "unist-util-visit": "^5.1.0", "yaml": "^2.9.0", "zod": "^4.3.6" }, "peerDependencies": { "@n6k.io/db": "*", "esbuild": "^0.27.3", "react": "^19.2.4", "react-dom": "^19.2.4", "typescript": "^5 || ^6", "vite": "^8" }, "optionalPeers": ["@n6k.io/db", "react", "react-dom", "vite"], "bin": { "n6k-build": "src/cli.ts" } }, "sha512-WVqoyOHkEGh3ID13fVrpfdlMYpcT6zzh51XO8NilF+89UgP/BE+C8ywNgoYSvgucs3EZNQE0ccyyZxh21a4I/w=="],
+    "@n6k.io/build": ["@n6k.io/build@0.6.0", "", { "dependencies": { "@mdx-js/mdx": "^3.1.1", "@shikijs/rehype": "^4.3.0", "estree-util-value-to-estree": "^3.5.0", "handlebars": "^4.7.8", "pino": "^10.3.1", "pino-pretty": "^13.1.3", "remark-directive": "^4.0.0", "remark-frontmatter": "^5.0.0", "remark-gfm": "^4.0.1", "remark-mdx-frontmatter": "^5.2.0", "shiki": "^4.3.0", "unist-util-visit": "^5.1.0", "yaml": "^2.9.0", "zod": "^4.3.6" }, "peerDependencies": { "@n6k.io/db": "*", "esbuild": "^0.27.3", "react": "^19.2.4", "react-dom": "^19.2.4", "typescript": "^5 || ^6", "vite": "^8" }, "optionalPeers": ["@n6k.io/db", "react", "react-dom", "vite"], "bin": { "n6k-build": "src/cli.ts" } }, "sha512-qO+4TtBlZ5vJYcUdOMpqoFCHaRG2yUsgr8VpvO5/Y8uHuy0ipkI6Q1R2c6RQ/+rdtVwFRR1qVDops8gCIY3XjA=="],
 
-    "@n6k.io/db": ["@n6k.io/db@0.13.1", "", { "dependencies": { "@msgpack/msgpack": "^3.1.2", "nanoid": "^6.0.2" }, "peerDependencies": { "@duckdb/duckdb-wasm": "1.33.1-dev114.0", "@duckdb/node-api": "2.0.0-r.1", "apache-arrow": "*" }, "optionalPeers": ["@duckdb/node-api"], "bin": { "copy-wasm-extensions": "src/copy-wasm-extensions.ts" } }, "sha512-RjeXONeOdd3vtNoAIk2SGg9aB+DmcAcfHWUH2xceXBVq7yQNrYgMbyipiCst6cnXHRWOqSOnYMt2cUXJizHvtg=="],
+    "@n6k.io/db": ["@n6k.io/db@0.13.3", "", { "dependencies": { "@msgpack/msgpack": "^3.1.2", "nanoid": "^6.0.2" }, "peerDependencies": { "@duckdb/duckdb-wasm": "1.33.1-dev114.0", "@duckdb/node-api": "2.0.0-r.1", "apache-arrow": "*" }, "optionalPeers": ["@duckdb/node-api"], "bin": { "copy-wasm-extensions": "src/copy-wasm-extensions.ts" } }, "sha512-UxsPDiUzVigiRhdcQanSBBRXchXzS6jWhgV/hj/ndfm8Eu9KUhUcTDy2DQ6bY5gTIMIKw9p8ioE4BoprIRQggg=="],
 
-    "@n6k.io/runtime": ["@n6k.io/runtime@0.1.2", "", { "peerDependencies": { "@n6k.io/db": "*", "@n6k.io/ui": "*", "radix-ui": "^1.4.3", "react": "^19.2.4", "typescript": "^5 || ^6" } }, "sha512-LUKoqEX3JVrV7DCADmBrdX2yzI/IWlJQvuTiypQl6vfNmJDM8kkiXjyXR40uFqqZlSfTMT9C5XYhkzyCNS0ARg=="],
+    "@n6k.io/runtime": ["@n6k.io/runtime@0.1.3", "", { "peerDependencies": { "@n6k.io/db": "*", "@n6k.io/ui": "*", "radix-ui": "^1.4.3", "react": "^19.2.4", "typescript": "^5 || ^6" } }, "sha512-g9UhGuCaUBcUwypXiaqYOA+1B5bVdBIXmCjkzAU+f0+JGTM6Nc1RuJL5srvV2h2CmJFOi1dX+Q91/IYZtF1nTw=="],
 
-    "@n6k.io/ui": ["@n6k.io/ui@0.10.6", "", { "dependencies": { "@base-ui/react": "^1.6.0", "@codemirror/autocomplete": "^6.20.3", "@codemirror/commands": "^6.10.4", "@codemirror/lang-sql": "^6.10.0", "@codemirror/language": "^6.12.4", "@codemirror/state": "^6.7.1", "@codemirror/view": "^6.43.6", "@fontsource-variable/geist": "^5.2.9", "@lezer/highlight": "^1.2.3", "@radix-ui/react-checkbox": "^1.3.7", "@radix-ui/react-label": "^2.1.11", "@tanstack/react-table": "^8.21.3", "@tanstack/react-virtual": "^3.14.6", "@types/d3-format": "^3.0.4", "@types/react": "^19.2.17", "@types/react-dom": "^19.2.3", "@uiw/react-codemirror": "^4.25.11", "apache-arrow": "^21.1.0", "class-variance-authority": "^0.7.1", "clsx": "^2.1.1", "cmdk": "^1.1.1", "d3-format": "^3.1.2", "date-fns": "^4.4.0", "lucide-react": "^1.24.0", "react-day-picker": "^10.0.2", "recharts": "3.8.1", "tailwind-merge": "^3.6.0", "vega-embed": "^7.1.0" }, "peerDependencies": { "@tanstack/react-query": "^5.101.0", "esbuild": "^0.27.3", "radix-ui": "^1.4.3", "react": "^19.2.4", "react-dom": "^19.2.4" } }, "sha512-pGRUHRaysQcbX8Jtyt3e70EWgeVJt3UoaTtMGc+ikEN2Uscq50GCek2aUlB1hSc7WMaa2/PjmUbXmm1xPiY++Q=="],
+    "@n6k.io/ui": ["@n6k.io/ui@0.11.0", "", { "dependencies": { "@base-ui/react": "^1.6.0", "@codemirror/autocomplete": "^6.20.3", "@codemirror/commands": "^6.10.4", "@codemirror/lang-sql": "^6.10.0", "@codemirror/language": "^6.12.4", "@codemirror/state": "^6.7.1", "@codemirror/view": "^6.43.6", "@fontsource-variable/geist": "^5.2.9", "@lezer/highlight": "^1.2.3", "@radix-ui/react-checkbox": "^1.3.7", "@radix-ui/react-label": "^2.1.11", "@tanstack/react-table": "^8.21.3", "@tanstack/react-virtual": "^3.14.6", "@types/d3-format": "^3.0.4", "@types/react": "^19.2.17", "@types/react-dom": "^19.2.3", "@uiw/react-codemirror": "^4.25.11", "apache-arrow": "^21.1.0", "class-variance-authority": "^0.7.1", "clsx": "^2.1.1", "cmdk": "^1.1.1", "d3-format": "^3.1.2", "date-fns": "^4.4.0", "lucide-react": "^1.24.0", "react-day-picker": "^10.0.2", "recharts": "3.8.1", "tailwind-merge": "^3.6.0", "vega-embed": "^7.1.0" }, "peerDependencies": { "@tanstack/react-query": "^5.101.0", "esbuild": "^0.27.3", "radix-ui": "^1.4.3", "react": "^19.2.4", "react-dom": "^19.2.4" } }, "sha512-/UDBPyE5mOnIhDMfOfN64R9BkkRKlTlvDdlRRQ4QQjM4MpjQBdzlCw4F9bnhrM1j3RjUfP9kKzF96Ul7gybqzA=="],
 
     "@nodelib/fs.scandir": ["@nodelib/fs.scandir@2.1.5", "", { "dependencies": { "@nodelib/fs.stat": "2.0.5", "run-parallel": "^1.1.9" } }, "sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g=="],
 

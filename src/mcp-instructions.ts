@@ -19,4 +19,4 @@ Controls
   <SelectContent><SelectItem value="2020-09">Sep 2020</SelectItem></SelectContent>
   :::
 - The bracketed name is a variable usable in expressions, e.g. filters={{ category }} or query={\`SELECT … LIMIT \${sims}\`}.
-- Attributes are strings coerced to numbers/booleans; \`options\` and \`default\` split on commas; an option "value:label" sets a separate label.`;
+- Attributes are strings coerced to numbers/booleans; \`options\` and \`default\` containing a comma become lists; an option "value:label" sets a separate label.`;

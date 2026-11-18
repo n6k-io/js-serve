@@ -14,6 +14,26 @@ n6k-serve page.mdx --port 3000                      # default 3000
 A token in `--data` is removed from the URL and sent as the connection token.
 Frontmatter `attach:` URLs may not carry one.
 
+```sh
+n6k-serve page.mdx --data nyc=ws://localhost:8080/ws --oidc-login
+```
+
+`--oidc-login` signs in to every source without a token, using the server's
+`/.well-known/oauth-protected-resource` and the OAuth device flow (as
+`n6kd auth login`). The refresh token stays in n6k-serve; the page fetches a
+fresh access token on each connect. A source whose server does not offer
+sign-in is an error. The sign-in is saved in the OS credential store and reused
+on the next start.
+
+With `--oidc-login`, n6k-serve prints a URL with a per-launch `?secret=`. Open
+that URL: it sets a cookie, and the token route refuses requests without it.
+
+```sh
+n6k-serve logout                      # list saved sign-ins
+n6k-serve logout ws://localhost:8080  # sign out of the sign-in that server uses
+n6k-serve logout --all                # sign out of all
+```
+
 Or in the page's frontmatter (`--data` wins for the same alias):
 
 ```yaml
@@ -40,6 +60,6 @@ claude mcp add n6k-serve -- bunx @n6k.io/serve --mcp --port 4000
 ```
 
 `--mcp` serves pages at `/<page>/` and is driven over stdio by one MCP client.
-It takes `--port`, `--host` and `--origin`, not `--data` or `--pages`. Data
+It takes only `--port`, `--host` and `--origin`. Data
 sources and pages are set with MCP tools (see `tools/list`); frontmatter
 `attach:` is ignored. The process exits when stdin closes.

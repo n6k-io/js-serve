@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import type { Bundle } from "./bundle";
 import { serveAsset } from "./assets";
 
@@ -26,6 +27,8 @@ export type ServeOptions = {
   hostname: string;
   port: number;
   origins: string[];
+  token?: (alias: string) => Promise<string> | undefined;
+  secret?: string;
 };
 
 type SocketData = { key: string };
@@ -36,6 +39,20 @@ const ISOLATION = {
 };
 
 const RELOAD_PREFIX = "/_n6k/reload/";
+export const TOKEN_PREFIX = "/_n6k/token/";
+export const SECRET_PARAM = "secret";
+
+// Cookies are shared across ports on one host, so the name carries the port.
+export function secretCookie(port: number): string {
+  return `n6k_secret_${port}`;
+}
+
+function sameSecret(a: string | null, b: string): boolean {
+  if (a === null) return false;
+  const x = Buffer.from(a);
+  const y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+}
 
 function topicFor(key: string): string {
   return `reload:${key}`;
@@ -113,6 +130,23 @@ async function servePage(
   );
 }
 
+async function serveToken(
+  options: ServeOptions,
+  alias: string,
+): Promise<Response> {
+  const pending = options.token?.(alias);
+  if (!pending) return new Response(`no token for ${alias}`, { status: 404 });
+  try {
+    return new Response(await pending, {
+      headers: { "Content-Type": "text/plain", "Cache-Control": "no-store" },
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`token for ${alias}: ${message}`);
+    return new Response(message, { status: 502 });
+  }
+}
+
 export function startServer(site: Site, options: ServeOptions) {
   const originAllowed = (req: Request): boolean =>
     options.origins.length === 0 ||
@@ -122,7 +156,23 @@ export function startServer(site: Site, options: ServeOptions) {
     hostname: options.hostname,
     port: options.port,
     async fetch(req, server) {
-      const { pathname } = new URL(req.url);
+      const url = new URL(req.url);
+      const { pathname } = url;
+      const { secret } = options;
+      const cookie = secretCookie(server.port!);
+
+      if (secret !== undefined && url.searchParams.has(SECRET_PARAM)) {
+        if (!sameSecret(url.searchParams.get(SECRET_PARAM), secret))
+          return new Response("wrong secret", { status: 403 });
+        url.searchParams.delete(SECRET_PARAM);
+        return new Response(null, {
+          status: 303,
+          headers: {
+            Location: url.pathname + url.search,
+            "Set-Cookie": `${cookie}=${secret}; Path=/; HttpOnly; SameSite=Strict`,
+          },
+        });
+      }
 
       if (pathname.startsWith(RELOAD_PREFIX)) {
         if (!originAllowed(req))
@@ -132,6 +182,21 @@ export function startServer(site: Site, options: ServeOptions) {
           return new Response(`no page ${key}`, { status: 404 });
         if (server.upgrade(req, { data: { key } })) return;
         return new Response("upgrade required", { status: 426 });
+      }
+
+      if (pathname.startsWith(TOKEN_PREFIX)) {
+        if (
+          secret !== undefined &&
+          !sameSecret(
+            new Bun.CookieMap(req.headers.get("cookie") ?? "").get(cookie),
+            secret,
+          )
+        )
+          return new Response(
+            "missing secret: open the URL n6k-serve printed",
+            { status: 403 },
+          );
+        return serveToken(options, pathname.slice(TOKEN_PREFIX.length));
       }
 
       const resolved = site.resolve(pathname);
