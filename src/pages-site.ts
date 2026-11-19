@@ -33,7 +33,8 @@ export class PagesSite implements Site {
     for (const ref of [...diff.removed, ...diff.changed])
       this.entries.delete(keyOf(ref));
     for (const ref of [...diff.added, ...diff.changed]) this.add(ref);
-    for (const ref of diff.changed) this.onChange(keyOf(ref));
+    for (const ref of [...diff.removed, ...diff.changed])
+      this.onChange(keyOf(ref));
   }
 
   resolve: Site["resolve"] = (pathname) => {

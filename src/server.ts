@@ -18,7 +18,6 @@ import { findFont } from "./assets";
 import { SERVE_NODE_MODULES, SERVE_ROOT, SRC_DIR } from "./paths";
 import {
   RELOAD_EVENT,
-  allowFs,
   cssId,
   entryId,
   entryUrl,
@@ -277,13 +276,27 @@ export function reloadPage(server: Server, key: string): void {
   server.vite.environments.client.hot.send(RELOAD_EVENT, key);
 }
 
-// Surfaces compile and import-resolution errors without a browser. The file may
-// have just been written, ahead of the watcher event that would invalidate it.
-export async function checkPage(server: Server, file: string): Promise<void> {
-  allowFs(server.vite.config, file);
+// Surfaces compile and import-resolution errors across the page's own import
+// graph without a browser; Vite only warms nested imports, unawaited. Starting
+// from the entry lets import analysis mark the page file as servable. The file
+// may have just been written, ahead of the watcher event that would invalidate it.
+export async function checkPage(
+  server: Server,
+  page: ServedPage,
+): Promise<void> {
   const client = server.vite.environments.client;
-  for (const mod of client.moduleGraph.getModulesByFile(realpathSync(file)) ??
-    [])
-    client.moduleGraph.invalidateModule(mod);
-  await client.transformRequest(file);
+  const { moduleGraph } = client;
+  for (const mod of moduleGraph.getModulesByFile(realpathSync(page.file)) ?? [])
+    moduleGraph.invalidateModule(mod);
+  const seen = new Set<string>();
+  const visit = async (url: string): Promise<void> => {
+    if (seen.has(url) || url.includes("/node_modules/")) return;
+    seen.add(url);
+    await client.transformRequest(url);
+    const mod = await moduleGraph.getModuleByUrl(url);
+    await Promise.all(
+      [...(mod?.importedModules ?? [])].map((dep) => visit(dep.url)),
+    );
+  };
+  await visit(entryId(page.key));
 }

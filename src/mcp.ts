@@ -80,6 +80,7 @@ export class McpSite implements Site {
 
   remove(page: string): void {
     if (!this.entries.delete(page)) throw new PagesError(`no page ${page}`);
+    this.onChange(page);
   }
 }
 
@@ -159,7 +160,7 @@ export function startMcp(
         abs = path.join(inlineDir, `${page}.mdx`);
         await Bun.write(abs, mdx);
       }
-      await checkPage(server, site.set(page, abs).file);
+      await checkPage(server, site.set(page, abs));
       return text(urlOf(page));
     },
   );

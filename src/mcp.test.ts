@@ -1,6 +1,6 @@
 import path from "node:path";
 import os from "node:os";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { afterEach, expect, test } from "bun:test";
 import { entryUrl } from "./vite-plugin";
 
@@ -237,4 +237,40 @@ test("mcp documents components and renders controls", async () => {
     ].join("\n"),
   });
   expect(container.isError).toBe(false);
+}, 60_000);
+
+test("mcp page lifecycle: re-added keys, fs access, nested errors", async () => {
+  const mcp = spawnMcp();
+  cleanup.push(() => mcp.proc.kill());
+  await mcp.init();
+  const failed = async (page: string, file: string) => {
+    const reply = await mcp.call("set_page", { page, path: file });
+    return reply.isError;
+  };
+  const dir = realpathSync(tempDir());
+  const a = path.join(dir, "a.mdx");
+  const b = path.join(dir, "b.mdx");
+  writeFileSync(a, "# from a");
+  writeFileSync(b, "# from b");
+  writeFileSync(path.join(dir, "secret.txt"), "do not serve");
+
+  const { text: url } = await mcp.call("set_page", { page: "p", path: a });
+  expect(await compiled(url)).toContain("from a");
+  expect(await mcp.call("remove_page", { page: "p" })).toEqual({
+    text: "removed p",
+    isError: false,
+  });
+  await mcp.call("set_page", { page: "p", path: b });
+  expect(await compiled(url)).toContain("from b");
+
+  expect(await status(new URL(`/@fs${dir}/secret.txt`, url))).not.toBe(200);
+
+  const broken = path.join(dir, "Broken.tsx");
+  writeFileSync(broken, "export default function Broken() { return <div>; }");
+  const nested = path.join(dir, "nested.mdx");
+  writeFileSync(nested, `import Broken from "./Broken.tsx";\n\n<Broken />\n`);
+  expect(await failed("n", nested)).toBe(true);
+
+  writeFileSync(broken, 'import x from "./missing.tsx";\nexport default x;');
+  expect(await failed("m", nested)).toBe(true);
 }, 60_000);

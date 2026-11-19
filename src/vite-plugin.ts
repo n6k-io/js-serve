@@ -1,9 +1,9 @@
 import path from "node:path";
 import { realpathSync } from "node:fs";
-import type { Plugin, ResolvedConfig } from "vite";
+import type { Plugin } from "vite";
 import { compileN6kMdx } from "@n6k.io/build/pipeline";
 import { buildCss } from "./css";
-import { SERVE_ROOT, SRC_DIR, nodeModulesChain } from "./paths";
+import { SERVE_ROOT, SRC_DIR } from "./paths";
 
 export type RootProps = {
   data: Record<string, string>;
@@ -55,20 +55,12 @@ import.meta.hot?.on(${JSON.stringify(RELOAD_EVENT)}, (key) => {
 `;
 }
 
-// Vite checks fs.allow and reports watcher events against real paths.
+// Vite reports watcher events against real paths.
 function realPath(file: string): string {
   try {
     return realpathSync(file);
   } catch {
     return file;
-  }
-}
-
-export function allowFs(config: ResolvedConfig, file: string): void {
-  const allow = config.server.fs.allow;
-  const dir = path.dirname(realPath(file));
-  for (const d of [dir, ...nodeModulesChain(dir)]) {
-    if (!allow.includes(d)) allow.push(d);
   }
 }
 
@@ -111,7 +103,6 @@ function mdx(): Plugin {
 }
 
 function pages(page: (key: string) => PageSource | undefined): Plugin {
-  let config: ResolvedConfig;
   const find = (key: string): PageSource => {
     const found = page(key);
     if (!found) throw new Error(`no page ${JSON.stringify(key)}`);
@@ -119,20 +110,13 @@ function pages(page: (key: string) => PageSource | undefined): Plugin {
   };
   return {
     name: "n6k-pages",
-    configResolved(resolved) {
-      config = resolved;
-    },
     resolveId(source) {
       if (source.startsWith(ENTRY)) return source;
       if (source.startsWith(CSS_IMPORT))
         return CSS + source.slice(CSS_IMPORT.length);
     },
     load(id) {
-      if (id.startsWith(ENTRY)) {
-        const found = find(keyOf(id, ENTRY));
-        allowFs(config, found.file);
-        return entryModule(found);
-      }
+      if (id.startsWith(ENTRY)) return entryModule(find(keyOf(id, ENTRY)));
       if (id.startsWith(CSS)) return buildCss(find(keyOf(id, CSS)).file);
     },
     hotUpdate({ file, modules }) {
