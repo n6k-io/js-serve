@@ -4,18 +4,18 @@ Serve `.mdx` pages in the browser with live data from
 [n6kd](https://github.com/n6k-io/n6kd) or pykit `n6k database`.
 
 ```sh
-n6k-serve page.mdx                                  # no data
-n6k-serve page.mdx --data ws://localhost:8080/ws    # attached as `db`
-n6k-serve page.mdx --data nyc=ws://localhost:8080/ws --data sales=ws://localhost:7823/ws
-n6k-serve page.mdx --data nyc=ws://<token>@localhost:8080/ws   # token sent to the server
-n6k-serve page.mdx --port 3000                      # default 3000
+n6k-serve page page.mdx                                  # no data
+n6k-serve page page.mdx --data ws://localhost:8080/ws    # attached as `db`
+n6k-serve page page.mdx --data nyc=ws://localhost:8080/ws --data sales=ws://localhost:7823/ws
+n6k-serve page page.mdx --data nyc=ws://<token>@localhost:8080/ws   # token sent to the server
+n6k-serve page page.mdx --port 3000                      # default 3000
 ```
 
 A token in `--data` is removed from the URL and sent as the connection token.
 Frontmatter `attach:` URLs may not carry one.
 
 ```sh
-n6k-serve page.mdx --data nyc=ws://localhost:8080/ws --oidc-login
+n6k-serve page page.mdx --data nyc=ws://localhost:8080/ws --oidc-login
 ```
 
 `--oidc-login` signs in to every source without a token, using the server's
@@ -55,11 +55,11 @@ reloads when the file is saved.
 ## MCP
 
 ```sh
-claude mcp add n6k-serve -- bunx @n6k.io/serve --mcp
-claude mcp add n6k-serve -- bunx @n6k.io/serve --mcp --port 4000
+claude mcp add n6k-serve -- bunx @n6k.io/serve mcp
+claude mcp add n6k-serve -- bunx @n6k.io/serve mcp --port 4000
 ```
 
-`--mcp` serves pages at `/<page>/` and is driven over stdio by one MCP client.
+`mcp` serves pages at `/<page>/` and is driven over stdio by one MCP client.
 It takes only `--port`, `--host` and `--origin`. Data
 sources and pages are set with MCP tools (see `tools/list`); frontmatter
 `attach:` is ignored. The process exits when stdin closes.

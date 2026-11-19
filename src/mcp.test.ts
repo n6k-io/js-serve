@@ -16,7 +16,7 @@ type Reply = {
 };
 
 function spawnMcp(args: string[] = []) {
-  const proc = Bun.spawn(["bun", CLI, "--mcp", "--port", "0", ...args], {
+  const proc = Bun.spawn(["bun", CLI, "mcp", "--port", "0", ...args], {
     stdin: "pipe",
     stdout: "pipe",
     stderr: "pipe",
