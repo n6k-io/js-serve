@@ -7,7 +7,7 @@
       "dependencies": {
         "@duckdb/duckdb-wasm": "1.33.1-dev114.0",
         "@modelcontextprotocol/server": "^2.4.0",
-        "@n6k.io/build": "^0.6.0",
+        "@n6k.io/build": "^0.7.0",
         "@n6k.io/db": "^0.13.3",
         "@n6k.io/runtime": "^0.1.3",
         "@n6k.io/ui": "^0.11.0",
@@ -260,7 +260,7 @@
 
     "@msgpack/msgpack": ["@msgpack/msgpack@3.1.3", "", {}, "sha512-47XIizs9XZXvuJgoaJUIE2lFoID8ugvc0jzSHP+Ptfk8nTbnR8g788wv48N03Kx0UkAv559HWRQ3yzOgzlRNUA=="],
 
-    "@n6k.io/build": ["@n6k.io/build@0.6.0", "", { "dependencies": { "@mdx-js/mdx": "^3.1.1", "@shikijs/rehype": "^4.3.0", "estree-util-value-to-estree": "^3.5.0", "handlebars": "^4.7.8", "pino": "^10.3.1", "pino-pretty": "^13.1.3", "remark-directive": "^4.0.0", "remark-frontmatter": "^5.0.0", "remark-gfm": "^4.0.1", "remark-mdx-frontmatter": "^5.2.0", "shiki": "^4.3.0", "unist-util-visit": "^5.1.0", "yaml": "^2.9.0", "zod": "^4.3.6" }, "peerDependencies": { "@n6k.io/db": "*", "esbuild": "^0.27.3", "react": "^19.2.4", "react-dom": "^19.2.4", "typescript": "^5 || ^6", "vite": "^8" }, "optionalPeers": ["@n6k.io/db", "react", "react-dom", "vite"], "bin": { "n6k-build": "src/cli.ts" } }, "sha512-qO+4TtBlZ5vJYcUdOMpqoFCHaRG2yUsgr8VpvO5/Y8uHuy0ipkI6Q1R2c6RQ/+rdtVwFRR1qVDops8gCIY3XjA=="],
+    "@n6k.io/build": ["@n6k.io/build@0.7.0", "", { "dependencies": { "@mdx-js/mdx": "^3.1.1", "@shikijs/rehype": "^4.3.0", "estree-util-value-to-estree": "^3.5.0", "handlebars": "^4.7.8", "pino": "^10.3.1", "pino-pretty": "^13.1.3", "remark-directive": "^4.0.0", "remark-frontmatter": "^5.0.0", "remark-gfm": "^4.0.1", "remark-mdx-frontmatter": "^5.2.0", "shiki": "^4.3.0", "unist-util-visit": "^5.1.0", "yaml": "^2.9.0", "zod": "^4.3.6" }, "peerDependencies": { "@n6k.io/db": "*", "esbuild": "^0.27.3", "react": "^19.2.4", "react-dom": "^19.2.4", "typescript": "^5 || ^6", "vite": "^8" }, "optionalPeers": ["@n6k.io/db", "react", "react-dom", "vite"], "bin": { "n6k-build": "src/cli.ts" } }, "sha512-GQ7ZL4X2/J1O8vIXUMQ7SD5UVqsaAP8N0/sVeurkgxoxwywGf3mkVhXLmMu4LcmkFUgLEiAEZAKj67YmAyDKUg=="],
 
     "@n6k.io/db": ["@n6k.io/db@0.13.3", "", { "dependencies": { "@msgpack/msgpack": "^3.1.2", "nanoid": "^6.0.2" }, "peerDependencies": { "@duckdb/duckdb-wasm": "1.33.1-dev114.0", "@duckdb/node-api": "2.0.0-r.1", "apache-arrow": "*" }, "optionalPeers": ["@duckdb/node-api"], "bin": { "copy-wasm-extensions": "src/copy-wasm-extensions.ts" } }, "sha512-UxsPDiUzVigiRhdcQanSBBRXchXzS6jWhgV/hj/ndfm8Eu9KUhUcTDy2DQ6bY5gTIMIKw9p8ioE4BoprIRQggg=="],
 
