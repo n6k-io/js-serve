@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import path from "node:path";
 import { existsSync, readFileSync } from "node:fs";
-import { parseArgs } from "node:util";
+import { Command } from "commander";
 import { parseAttachUrls } from "@n6k.io/build/pipeline";
 import { DataArgError, resolveData, type DataSource } from "./data-args";
 import { bundlePage } from "./bundle";
@@ -25,94 +25,104 @@ import { LogoutError, logout } from "./logout";
 import { SRC_DIR } from "./paths";
 import pkg from "../package.json";
 
-const USAGE = `usage: n6k-serve <page.mdx> [--data [alias=]ws://…]... [--oidc-login] [options]
-       n6k-serve --pages <pages.yml> [options]
-       n6k-serve sql [--console] [--data [alias=]ws://…]... [--oidc-login] [options]
-       n6k-serve --mcp [options]
-       n6k-serve logout [ws://host[:port] | --all]
-options: [--port 3000] [--host 127.0.0.1] [--origin <origin>]...`;
-
 function fail(message: string): never {
   console.error(message);
   process.exit(1);
 }
 
-const { values, positionals } = parseArgs({
-  args: process.argv.slice(2),
-  options: {
-    data: { type: "string", multiple: true, default: [] },
-    pages: { type: "string" },
-    mcp: { type: "boolean", default: false },
-    console: { type: "boolean", default: false },
-    "oidc-login": { type: "boolean", default: false },
-    all: { type: "boolean", default: false },
-    port: { type: "string", default: "3000" },
-    host: { type: "string", default: "127.0.0.1" },
-    origin: { type: "string", multiple: true, default: [] },
-  },
-  allowPositionals: true,
-  strict: true,
-});
+const collect = (value: string, acc: string[]): string[] => [...acc, value];
 
-if (positionals[0] === "logout") {
-  if (positionals.length > 2 || (values.all && positionals.length === 2))
-    fail(USAGE);
-  try {
-    for (const out of await logout(positionals[1], values.all))
-      console.error(out);
-  } catch (err) {
-    if (err instanceof LogoutError) fail(err.message);
-    throw err;
-  }
-  process.exit(0);
-}
-if (values.all) fail(USAGE);
+type ServerFlags = { port: string; host: string; origin: string[] };
+type DataFlags = { data: string[]; oidcLogin: boolean };
 
-const port = Number(values.port);
-if (!Number.isInteger(port) || port < 0)
-  fail(`--port ${values.port}: not a port`);
-if (!hasWasmExtensions())
-  fail("n6k duckdb wasm extensions missing from @n6k.io/db");
-
-const options: ServeOptions = {
-  hostname: values.host,
-  port,
-  origins: values.origin,
-};
-
-if (values.console && positionals[0] !== "sql") fail(USAGE);
-if (values["oidc-login"] && (values.mcp || values.pages !== undefined))
-  fail(USAGE);
-
-if (positionals[0] === "sql") {
-  if (positionals.length !== 1 || values.mcp || values.pages !== undefined)
-    fail(USAGE);
-  await servePage(
-    path.join(SRC_DIR, "sql", values.console ? "console.mdx" : "editor.mdx"),
-    true,
-  );
-} else if (values.mcp) {
-  if (
-    positionals.length > 0 ||
-    values.pages !== undefined ||
-    values.data.length > 0
-  )
-    fail(USAGE);
-  serveMcp();
-} else if (values.pages === undefined) {
-  if (positionals.length !== 1) fail(USAGE);
-  await servePage(positionals[0]);
-} else {
-  if (positionals.length > 0 || values.data.length > 0) fail(USAGE);
-  servePages(values.pages);
+function withServerFlags(cmd: Command): Command {
+  return cmd
+    .option("--port <port>", "port to listen on", "3000")
+    .option("--host <host>", "host to bind", "127.0.0.1")
+    .option("--origin <origin>", "allowed origin (repeatable)", collect, []);
 }
 
-async function servePage(arg: string, bare = false): Promise<void> {
+function withDataFlags(cmd: Command): Command {
+  return cmd
+    .option("--data <[alias=]ws://…>", "data source (repeatable)", collect, [])
+    .option("--oidc-login", "sign in to data sources with OIDC", false);
+}
+
+function serveOptions(flags: ServerFlags): ServeOptions {
+  const port = Number(flags.port);
+  if (!Number.isInteger(port) || port < 0)
+    fail(`--port ${flags.port}: not a port`);
+  if (!hasWasmExtensions())
+    fail("n6k duckdb wasm extensions missing from @n6k.io/db");
+  return { hostname: flags.host, port, origins: flags.origin };
+}
+
+const program = new Command("n6k-serve")
+  .description(pkg.description)
+  .version(pkg.version);
+
+withDataFlags(withServerFlags(program.command("page")))
+  .description("serve one .mdx page")
+  .argument("<page.mdx>")
+  .action(async (arg: string, flags: ServerFlags & DataFlags) => {
+    await servePage(arg, flags, serveOptions(flags));
+  });
+
+withServerFlags(program.command("site"))
+  .description("serve the pages listed in a pages.yml")
+  .argument("<pages.yml>")
+  .action((arg: string, flags: ServerFlags) => {
+    servePages(arg, serveOptions(flags));
+  });
+
+withDataFlags(withServerFlags(program.command("sql")))
+  .description("serve the SQL editor")
+  .option("--console", "serve the SQL console instead of the editor", false)
+  .action(async (flags: ServerFlags & DataFlags & { console: boolean }) => {
+    await servePage(
+      path.join(SRC_DIR, "sql", flags.console ? "console.mdx" : "editor.mdx"),
+      flags,
+      serveOptions(flags),
+      true,
+    );
+  });
+
+withServerFlags(program.command("mcp"))
+  .description("serve pages driven by an MCP client over stdio")
+  .action((flags: ServerFlags) => {
+    serveMcp(serveOptions(flags));
+  });
+
+program
+  .command("logout")
+  .description("list saved sign-ins, or sign out")
+  .argument("[url]", "ws://host[:port]")
+  .option("--all", "sign out of all", false)
+  .action(async (url: string | undefined, flags: { all: boolean }) => {
+    if (url !== undefined && flags.all)
+      fail("logout: give a URL or --all, not both");
+    try {
+      for (const out of await logout(url, flags.all)) console.error(out);
+    } catch (err) {
+      if (err instanceof LogoutError) fail(err.message);
+      throw err;
+    }
+    process.exit(0);
+  });
+
+await program.parseAsync();
+
+async function servePage(
+  arg: string,
+  flags: DataFlags,
+  options: ServeOptions,
+  bare = false,
+): Promise<void> {
   const mdxPath = path.resolve(arg);
   if (!mdxPath.endsWith(".mdx")) fail(`${arg}: not an .mdx file`);
   if (!existsSync(mdxPath)) fail(`${arg}: no such file`);
-  const dataFlags = values.data;
-  const logins = values["oidc-login"] ? new OidcLogins() : undefined;
+  const dataFlags = flags.data;
+  const logins = flags.oidcLogin ? new OidcLogins() : undefined;
 
   const login = async (
     sources: Record<string, DataSource>,
@@ -207,7 +217,7 @@ async function servePage(arg: string, bare = false): Promise<void> {
   });
 }
 
-function servePages(arg: string): void {
+function servePages(arg: string, options: ServeOptions): void {
   const file = path.resolve(arg);
   const load = (): PagesConfig => parsePages(readFileSync(file, "utf8"), file);
 
@@ -234,7 +244,7 @@ function servePages(arg: string): void {
   });
 }
 
-function serveMcp(): void {
+function serveMcp(options: ServeOptions): void {
   const site = new McpSite((key) => reloadPage(server, key));
   const server = startServer(site, options);
   console.error(`n6k-serve ${server.url}`);

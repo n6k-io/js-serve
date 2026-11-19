@@ -75,13 +75,13 @@ test("secret URL sets the cookie the token route requires", async () => {
   expect(await ok.text()).toBe("tok");
 });
 
-test("--oidc-login is rejected with --mcp and --pages", async () => {
-  for (const args of [["--mcp"], ["--pages", "x.yml"]]) {
+test("--oidc-login is rejected by mcp and site", async () => {
+  for (const args of [["mcp"], ["site", "x.yml"]]) {
     const proc = Bun.spawn(
       ["bun", `${import.meta.dir}/cli.ts`, ...args, "--oidc-login"],
       { stdin: "ignore", stdout: "pipe", stderr: "pipe" },
     );
     expect(await proc.exited).toBe(1);
-    expect(await new Response(proc.stderr).text()).toContain("usage:");
+    expect(await new Response(proc.stderr).text()).toContain("unknown option");
   }
 });
