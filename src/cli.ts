@@ -4,8 +4,6 @@ import { existsSync, readFileSync } from "node:fs";
 import { Command } from "commander";
 import { parseAttachUrls } from "@n6k.io/build/pipeline";
 import { DataArgError, resolveData, type DataSource } from "./data-args";
-import { bundlePage } from "./bundle";
-import { buildCss } from "./css";
 import { hasWasmExtensions } from "./assets";
 import { parsePages, type PagesConfig } from "./pages";
 import { PagesSite } from "./pages-site";
@@ -13,7 +11,6 @@ import {
   SECRET_PARAM,
   reloadPage,
   startServer,
-  type PageState,
   type ServeOptions,
   type ServedPage,
   type Site,
@@ -23,6 +20,7 @@ import { McpSite, startMcp } from "./mcp";
 import { OidcError, OidcLogins, type OidcSession } from "./oidc";
 import { LogoutError, logout } from "./logout";
 import { SRC_DIR } from "./paths";
+import type { RootProps } from "./vite-plugin";
 import pkg from "../package.json";
 
 function fail(message: string): never {
@@ -71,8 +69,8 @@ withDataFlags(withServerFlags(program.command("page")))
 withServerFlags(program.command("site"))
   .description("serve the pages listed in a pages.yml")
   .argument("<pages.yml>")
-  .action((arg: string, flags: ServerFlags) => {
-    servePages(arg, serveOptions(flags));
+  .action(async (arg: string, flags: ServerFlags) => {
+    await servePages(arg, serveOptions(flags));
   });
 
 withDataFlags(withServerFlags(program.command("sql")))
@@ -89,8 +87,8 @@ withDataFlags(withServerFlags(program.command("sql")))
 
 withServerFlags(program.command("mcp"))
   .description("serve pages driven by an MCP client over stdio")
-  .action((flags: ServerFlags) => {
-    serveMcp(serveOptions(flags));
+  .action(async (flags: ServerFlags) => {
+    await serveMcp(serveOptions(flags));
   });
 
 program
@@ -138,21 +136,17 @@ async function servePage(
   const resolveDataFor = (): Record<string, DataSource> =>
     resolveData(parseAttachUrls(readFileSync(mdxPath, "utf8")), dataFlags);
 
-  const build = async (
+  const propsFor = (
     sources: Record<string, DataSource>,
     oidc: string[],
-  ): Promise<PageState> => {
+  ): RootProps => {
     const entries = Object.entries(sources);
-    const [bundle, css] = await Promise.all([
-      bundlePage(mdxPath, {
-        data: Object.fromEntries(entries.map(([a, s]) => [a, s.url])),
-        tokens: Object.fromEntries(entries.map(([a, s]) => [a, s.token])),
-        oidc,
-        bare,
-      }),
-      buildCss(mdxPath),
-    ]);
-    return { bundle, css };
+    return {
+      data: Object.fromEntries(entries.map(([a, s]) => [a, s.url])),
+      tokens: Object.fromEntries(entries.map(([a, s]) => [a, s.token])),
+      oidc,
+      bare,
+    };
   };
 
   let data: Record<string, DataSource>;
@@ -165,11 +159,12 @@ async function servePage(
       fail(err.message);
     throw err;
   }
-  let state = await build(data, [...sessions.keys()]);
+  let rootProps = propsFor(data, [...sessions.keys()]);
   const page: ServedPage = {
     title: path.basename(mdxPath),
     key: "",
-    state: () => Promise.resolve(state),
+    file: mdxPath,
+    rootProps: () => rootProps,
   };
   const site: Site = {
     resolve: (pathname) => ({ kind: "page", page, rest: pathname }),
@@ -180,7 +175,7 @@ async function servePage(
         "base64url",
       )
     : undefined;
-  const server = startServer(site, {
+  const server = await startServer(site, {
     ...options,
     token: (alias) => sessions.get(alias)?.token(),
     secret,
@@ -206,18 +201,20 @@ async function servePage(
     try {
       const nextData = resolveDataFor();
       const nextSessions = await login(nextData);
-      state = await build(nextData, [...nextSessions.keys()]);
+      const next = propsFor(nextData, [...nextSessions.keys()]);
       data = nextData;
       sessions = nextSessions;
+      if (JSON.stringify(next) === JSON.stringify(rootProps)) return;
+      rootProps = next;
       reloadPage(server, "");
-      console.error(`rebuilt ${path.basename(mdxPath)}`);
+      console.error(`reloaded ${path.basename(mdxPath)}: data changed`);
     } catch (err) {
       console.error(err instanceof Error ? err.message : String(err));
     }
   });
 }
 
-function servePages(arg: string, options: ServeOptions): void {
+async function servePages(arg: string, options: ServeOptions): Promise<void> {
   const file = path.resolve(arg);
   const load = (): PagesConfig => parsePages(readFileSync(file, "utf8"), file);
 
@@ -231,7 +228,7 @@ function servePages(arg: string, options: ServeOptions): void {
 
   const site = new PagesSite((key) => reloadPage(server, key));
   site.update(config);
-  const server = startServer(site, options);
+  const server = await startServer(site, options);
   console.error(`n6k-serve ${server.url}`);
 
   watchFile(file, () => {
@@ -244,9 +241,9 @@ function servePages(arg: string, options: ServeOptions): void {
   });
 }
 
-function serveMcp(options: ServeOptions): void {
+async function serveMcp(options: ServeOptions): Promise<void> {
   const site = new McpSite((key) => reloadPage(server, key));
-  const server = startServer(site, options);
+  const server = await startServer(site, options);
   console.error(`n6k-serve ${server.url}`);
   startMcp(site, server, pkg.version, () => process.exit(0));
 }

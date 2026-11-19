@@ -1,15 +1,6 @@
 import path from "node:path";
-import { bundlePage } from "./bundle";
-import { buildCss } from "./css";
 import { diffPages, type PagesConfig, type PageRef } from "./pages";
-import type { PageState, ServedPage, Site } from "./server";
-import { watchFile } from "./watch";
-
-type Entry = {
-  served: ServedPage;
-  unwatch: () => void;
-  cached?: Promise<PageState>;
-};
+import type { ServedPage, Site } from "./server";
 
 function keyOf({ app, page }: PageRef): string {
   return `${app}/${page}`;
@@ -31,7 +22,7 @@ function listing(config: PagesConfig): string {
 
 export class PagesSite implements Site {
   private config: PagesConfig = {};
-  private readonly entries = new Map<string, Entry>();
+  private readonly entries = new Map<string, ServedPage>();
 
   constructor(private readonly onChange: (key: string) => void) {}
 
@@ -39,7 +30,8 @@ export class PagesSite implements Site {
     const prev = this.config;
     this.config = next;
     const diff = diffPages(prev, next);
-    for (const ref of [...diff.removed, ...diff.changed]) this.drop(ref);
+    for (const ref of [...diff.removed, ...diff.changed])
+      this.entries.delete(keyOf(ref));
     for (const ref of [...diff.added, ...diff.changed]) this.add(ref);
     for (const ref of diff.changed) this.onChange(keyOf(ref));
   }
@@ -50,64 +42,24 @@ export class PagesSite implements Site {
     const entry = this.entries.get(`${app}/${page}`);
     if (!entry) return;
     if (rest.length === 0) return { kind: "redirect", to: `${pathname}/` };
-    return { kind: "page", page: entry.served, rest: `/${rest.join("/")}` };
+    return { kind: "page", page: entry, rest: `/${rest.join("/")}` };
   };
 
-  page: Site["page"] = (key) => this.entries.get(key)?.served;
+  page: Site["page"] = (key) => this.entries.get(key);
 
   private add(ref: PageRef): void {
     const key = keyOf(ref);
     const file = this.config[ref.app].pages[ref.page];
     const { url, token, catalogs } = this.config[ref.app].gateway;
-    const entry: Entry = {
-      served: {
-        title: path.basename(file),
-        key,
-        state: () => {
-          if (entry.cached) return entry.cached;
-          const built = this.build(file, url, catalogs, token);
-          entry.cached = built;
-          built.catch(() => {
-            if (entry.cached === built) entry.cached = undefined;
-          });
-          return built;
-        },
-      },
-      unwatch: () => {},
+    const rootProps = {
+      data: Object.fromEntries(catalogs.map((c) => [c, url])),
+      tokens: Object.fromEntries(catalogs.map((c) => [c, token])),
     };
-    try {
-      entry.unwatch = watchFile(file, () => {
-        entry.cached = undefined;
-        this.onChange(key);
-        console.error(`changed ${key}`);
-      });
-    } catch (err) {
-      console.error(
-        `${key}: cannot watch ${file}: ${err instanceof Error ? err.message : String(err)}`,
-      );
-    }
-    this.entries.set(key, entry);
-  }
-
-  private drop(ref: PageRef): void {
-    const key = keyOf(ref);
-    this.entries.get(key)?.unwatch();
-    this.entries.delete(key);
-  }
-
-  private async build(
-    file: string,
-    url: string,
-    catalogs: string[],
-    token: string,
-  ): Promise<PageState> {
-    const [bundle, css] = await Promise.all([
-      bundlePage(file, {
-        data: Object.fromEntries(catalogs.map((c) => [c, url])),
-        tokens: Object.fromEntries(catalogs.map((c) => [c, token])),
-      }),
-      buildCss(file),
-    ]);
-    return { bundle, css };
+    this.entries.set(key, {
+      title: path.basename(file),
+      key,
+      file,
+      rootProps: () => rootProps,
+    });
   }
 }

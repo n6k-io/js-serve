@@ -2,6 +2,7 @@ import path from "node:path";
 import os from "node:os";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { afterEach, expect, test } from "bun:test";
+import { entryUrl } from "./vite-plugin";
 
 const CLI = path.join(import.meta.dir, "cli.ts");
 
@@ -96,6 +97,19 @@ async function body(url: string | URL): Promise<string> {
   return res.text();
 }
 
+function entry(pageUrl: string): Promise<string> {
+  const key = new URL(pageUrl).pathname.split("/", 2)[1]!;
+  return body(new URL(entryUrl(key), pageUrl));
+}
+
+async function compiled(pageUrl: string): Promise<string> {
+  const mdx = /import Page from "([^"]+\.mdx[^"]*)"/.exec(
+    await entry(pageUrl),
+  )?.[1];
+  expect(mdx).toBeDefined();
+  return body(new URL(mdx!, pageUrl));
+}
+
 test("mcp serves inline and path pages", async () => {
   const mcp = spawnMcp();
   cleanup.push(() => mcp.proc.kill());
@@ -121,11 +135,10 @@ test("mcp serves inline and path pages", async () => {
   const url = set.text;
   expect(url).toMatch(/^http:\/\/.*\/p\/$/);
   expect(await status(url)).toBe(200);
-  const js = new URL("index.js", url);
-  expect(await body(js)).toContain("one");
+  expect(await compiled(url)).toContain("one");
 
   await mcp.call("set_page", { page: "p", mdx: "# two" });
-  expect(await body(js)).toContain("two");
+  expect(await compiled(url)).toContain("two");
 
   const broken = await mcp.call("set_page", { page: "bad", mdx: "<Nope" });
   expect(broken.isError).toBe(true);
@@ -148,7 +161,7 @@ test("mcp serves inline and path pages", async () => {
   const pages = JSON.parse(listed.text) as { page: string }[];
   expect(pages.map((p) => p.page).toSorted()).toEqual(["bad", "f", "p"]);
 
-  expect(await body(js)).not.toContain("tok-secret");
+  expect(await entry(url)).not.toContain("tok-secret");
   expect(
     await failed("set_data", { alias: "1x", url: "ws://x", token: "t" }),
   ).toBe(true);
@@ -162,11 +175,11 @@ test("mcp serves inline and path pages", async () => {
       token: "tok-secret",
     }),
   ).toBe(false);
-  expect(await body(js)).toContain("tok-secret");
-  expect(await body(js)).toContain("ws://127.0.0.1:1/ws");
+  expect(await entry(url)).toContain("tok-secret");
+  expect(await entry(url)).toContain("ws://127.0.0.1:1/ws");
   expect(await failed("remove_data", { alias: "db" })).toBe(false);
-  expect(await body(js)).not.toContain("tok-secret");
-  expect(await body(js)).not.toContain("ws://127.0.0.1:1/ws");
+  expect(await entry(url)).not.toContain("tok-secret");
+  expect(await entry(url)).not.toContain("ws://127.0.0.1:1/ws");
   expect(await failed("remove_data", { alias: "db" })).toBe(true);
 
   expect(await failed("remove_page", { page: "p" })).toBe(false);
@@ -211,7 +224,7 @@ test("mcp documents components and renders controls", async () => {
     mdx: '::Slider[n]{label="N" min=1 max=10 default=5}\n\nValue {n}\n',
   });
   expect(leaf.isError).toBe(false);
-  expect(await body(new URL("index.js", leaf.text))).toContain("Controls");
+  expect(await compiled(leaf.text)).toContain("Controls");
 
   const container = await mcp.call("set_page", {
     page: "container",
