@@ -4,21 +4,11 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { McpServer } from "@modelcontextprotocol/server";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { z } from "zod";
-import { bundlePage } from "./bundle";
-import { buildCss } from "./css";
 import { describeComponent, searchComponents } from "./component-docs";
 import { ALIAS, type DataSource } from "./data-args";
 import { INSTRUCTIONS } from "./mcp-instructions";
 import { PagesError, name } from "./pages";
-import type { PageState, ServedPage, Server, Site } from "./server";
-import { watchFile } from "./watch";
-
-type Entry = {
-  file: string;
-  served: ServedPage;
-  cached?: Promise<PageState>;
-  unwatch: () => void;
-};
+import { checkPage, type ServedPage, type Server, type Site } from "./server";
 
 function listing(pages: string[]): string {
   const items = pages.map(
@@ -32,7 +22,7 @@ function listing(pages: string[]): string {
 }
 
 export class McpSite implements Site {
-  private readonly entries = new Map<string, Entry>();
+  private readonly entries = new Map<string, ServedPage>();
   private readonly data = new Map<string, DataSource>();
 
   constructor(private readonly onChange: (key: string) => void) {}
@@ -44,10 +34,10 @@ export class McpSite implements Site {
     const entry = this.entries.get(page);
     if (!entry) return;
     if (rest.length === 0) return { kind: "redirect", to: `${pathname}/` };
-    return { kind: "page", page: entry.served, rest: `/${rest.join("/")}` };
+    return { kind: "page", page: entry, rest: `/${rest.join("/")}` };
   };
 
-  page: Site["page"] = (key) => this.entries.get(key)?.served;
+  page: Site["page"] = (key) => this.entries.get(key);
 
   setData(alias: string, source: DataSource): void {
     this.data.set(alias, source);
@@ -60,10 +50,7 @@ export class McpSite implements Site {
   }
 
   private rebuildAll(): void {
-    for (const [page, entry] of this.entries) {
-      entry.cached = undefined;
-      this.onChange(page);
-    }
+    for (const page of this.entries.keys()) this.onChange(page);
   }
 
   list(): { page: string; file: string }[] {
@@ -72,48 +59,12 @@ export class McpSite implements Site {
 
   set(page: string, file: string): ServedPage {
     const existing = this.entries.get(page);
-    if (existing?.file === file) {
-      existing.cached = undefined;
-      this.onChange(page);
-      return existing.served;
-    }
-    existing?.unwatch();
-    const entry: Entry = {
+    if (existing?.file === file) return existing;
+    const served: ServedPage = {
+      title: path.basename(file),
+      key: page,
       file,
-      served: {
-        title: path.basename(file),
-        key: page,
-        state: () => {
-          if (entry.cached) return entry.cached;
-          const built = this.build(file);
-          entry.cached = built;
-          built.catch(() => {
-            if (entry.cached === built) entry.cached = undefined;
-          });
-          return built;
-        },
-      },
-      unwatch: watchFile(file, () => {
-        entry.cached = undefined;
-        this.onChange(page);
-        console.error(`changed ${page}`);
-      }),
-    };
-    this.entries.set(page, entry);
-    if (existing) this.onChange(page);
-    return entry.served;
-  }
-
-  remove(page: string): void {
-    const entry = this.entries.get(page);
-    if (!entry) throw new PagesError(`no page ${page}`);
-    entry.unwatch();
-    this.entries.delete(page);
-  }
-
-  private async build(file: string): Promise<PageState> {
-    const [bundle, css] = await Promise.all([
-      bundlePage(file, {
+      rootProps: () => ({
         data: Object.fromEntries(
           [...this.data].map(([alias, { url }]) => [alias, url]),
         ),
@@ -121,9 +72,15 @@ export class McpSite implements Site {
           [...this.data].map(([alias, { token }]) => [alias, token]),
         ),
       }),
-      buildCss(file),
-    ]);
-    return { bundle, css };
+    };
+    this.entries.set(page, served);
+    if (existing) this.onChange(page);
+    return served;
+  }
+
+  remove(page: string): void {
+    if (!this.entries.delete(page)) throw new PagesError(`no page ${page}`);
+    this.onChange(page);
   }
 }
 
@@ -203,7 +160,7 @@ export function startMcp(
         abs = path.join(inlineDir, `${page}.mdx`);
         await Bun.write(abs, mdx);
       }
-      await site.set(page, abs).state();
+      await checkPage(server, site.set(page, abs));
       return text(urlOf(page));
     },
   );
@@ -260,7 +217,7 @@ export function startMcp(
   const transport = new StdioServerTransport();
   // eslint-disable-next-line unicorn/prefer-add-event-listener -- Transport has no addEventListener
   transport.onclose = () => {
-    void server.stop(true);
+    void server.stop();
     rmSync(inlineDir, { recursive: true, force: true });
     onClose();
   };

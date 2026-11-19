@@ -1,55 +1,11 @@
-import path from "node:path";
 import { wasmDir } from "@n6k.io/db/wasm-dir";
-import {
-  N6K_DUCKDB_FILES,
-  N6K_WASM_MIME,
-  collectN6kWasmFiles,
-  findFontFile,
-  n6kDuckDBUrl,
-  resolveDuckDBDist,
-} from "@n6k.io/build/pipeline";
+import { collectN6kWasmFiles, findFontFile } from "@n6k.io/build/pipeline";
 import { SERVE_NODE_MODULES } from "./paths";
 
-const SAME_ORIGIN = { "Cross-Origin-Resource-Policy": "same-origin" };
-
-const duckdbFiles = new Map(
-  Object.values(N6K_DUCKDB_FILES).map((file) => [
-    n6kDuckDBUrl(file),
-    resolveDuckDBDist(file),
-  ]),
-);
-
-const wasmFiles = new Map(
-  collectN6kWasmFiles(wasmDir).map((f) => [`/${f.rel}`, f.abs]),
-);
-
-function mime(file: string): string {
-  return N6K_WASM_MIME[path.extname(file)] ?? "application/octet-stream";
-}
-
-export async function serveAsset(
-  pathname: string,
-): Promise<Response | undefined> {
-  const fixed = duckdbFiles.get(pathname) ?? wasmFiles.get(pathname);
-  if (fixed) {
-    return new Response(Bun.file(fixed), {
-      headers: { "Content-Type": mime(fixed), ...SAME_ORIGIN },
-    });
-  }
-  if (pathname.startsWith("/files/")) {
-    const name = pathname.slice("/files/".length);
-    const font = SERVE_NODE_MODULES.map((dir) => findFontFile(dir, name)).find(
-      Boolean,
-    );
-    if (font) {
-      return new Response(Bun.file(font), {
-        headers: { "Content-Type": "font/woff2", ...SAME_ORIGIN },
-      });
-    }
-  }
-  return undefined;
+export function findFont(name: string): string | undefined {
+  return SERVE_NODE_MODULES.map((dir) => findFontFile(dir, name)).find(Boolean);
 }
 
 export function hasWasmExtensions(): boolean {
-  return wasmFiles.size > 0;
+  return collectN6kWasmFiles(wasmDir).length > 0;
 }

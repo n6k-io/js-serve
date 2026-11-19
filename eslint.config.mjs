@@ -52,6 +52,11 @@ export default [
     rules: { "@typescript-eslint/consistent-type-assertions": "off" },
   },
   {
+    // Rollup/Vite hooks receive their plugin context as `this`.
+    files: ["src/vite-plugin.ts"],
+    rules: { "unicorn/no-this-outside-of-class": "off" },
+  },
+  {
     ignores: ["node_modules/", "dist/"],
   },
 ];

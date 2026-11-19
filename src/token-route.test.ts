@@ -1,16 +1,16 @@
 import { afterEach, expect, test } from "bun:test";
-import { secretCookie, startServer, type Site } from "./server";
+import { secretCookie, startServer, type Server, type Site } from "./server";
 
-const servers: { stop: (force?: boolean) => unknown }[] = [];
-afterEach(() => {
-  for (const s of servers.splice(0)) s.stop(true);
+const servers: Server[] = [];
+afterEach(async () => {
+  await Promise.all(servers.splice(0).map((s) => s.stop()));
 });
 
 const status = (res: Promise<Response>) => res.then((r) => r.status);
 
 test("token route serves tokens by alias", async () => {
   const site: Site = { resolve: () => {}, page: () => {} };
-  const server = startServer(site, {
+  const server = await startServer(site, {
     hostname: "127.0.0.1",
     port: 0,
     origins: ["http://ok"],
@@ -37,7 +37,7 @@ test("token route serves tokens by alias", async () => {
 
 test("secret URL sets the cookie the token route requires", async () => {
   const site: Site = { resolve: () => {}, page: () => {} };
-  const server = startServer(site, {
+  const server = await startServer(site, {
     hostname: "127.0.0.1",
     port: 0,
     origins: [],
@@ -45,7 +45,7 @@ test("secret URL sets the cookie the token route requires", async () => {
     secret: "s3cret",
   });
   servers.push(server);
-  const name = secretCookie(server.port!);
+  const name = secretCookie(server.port);
   const token = (cookie?: string) =>
     fetch(`${server.url}_n6k/token/nyc`, {
       headers: cookie ? { cookie } : {},
