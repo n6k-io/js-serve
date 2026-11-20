@@ -37,7 +37,7 @@ describe("parsePages", () => {
     [
       "non-ws url",
       "apps:\n  a:\n    gateway: { url: http://x, token: t, catalogs: [] }",
-      /not ws/,
+      /is not a n6k\(s\):\/\/ or ws\(s\):\/\/ URL/,
     ],
     [
       "bad catalog",

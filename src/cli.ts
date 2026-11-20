@@ -42,7 +42,12 @@ function withServerFlags(cmd: Command): Command {
 
 function withDataFlags(cmd: Command): Command {
   return cmd
-    .option("--data <[alias=]ws://…>", "data source (repeatable)", collect, [])
+    .option(
+      "--data <[alias[:catalog]=]n6k://…>",
+      "data source (repeatable)",
+      collect,
+      [],
+    )
     .option("--oidc-login", "sign in to data sources with OIDC", false);
 }
 
@@ -94,7 +99,7 @@ withServerFlags(program.command("mcp"))
 program
   .command("logout")
   .description("list saved sign-ins, or sign out")
-  .argument("[url]", "ws://host[:port]")
+  .argument("[url]", "n6k://host[:port]")
   .option("--all", "sign out of all", false)
   .action(async (url: string | undefined, flags: { all: boolean }) => {
     if (url !== undefined && flags.all)
@@ -133,8 +138,17 @@ async function servePage(
     return out;
   };
 
+  const attachUrls = () => {
+    try {
+      return parseAttachUrls(readFileSync(mdxPath, "utf8"));
+    } catch (err) {
+      throw new DataArgError(
+        `${arg}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+  };
   const resolveDataFor = (): Record<string, DataSource> =>
-    resolveData(parseAttachUrls(readFileSync(mdxPath, "utf8")), dataFlags);
+    resolveData(attachUrls(), dataFlags);
 
   const propsFor = (
     sources: Record<string, DataSource>,
@@ -144,6 +158,7 @@ async function servePage(
     return {
       data: Object.fromEntries(entries.map(([a, s]) => [a, s.url])),
       tokens: Object.fromEntries(entries.map(([a, s]) => [a, s.token])),
+      catalogs: Object.fromEntries(entries.map(([a, s]) => [a, s.catalog])),
       oidc,
       bare,
     };
@@ -185,10 +200,11 @@ async function servePage(
   if (secret) url.searchParams.set(SECRET_PARAM, secret);
   console.error(`n6k-serve ${url}`);
   const flagged = new Set(Object.keys(resolveData({}, dataFlags)));
-  const rows = Object.entries(data).map(([alias, { url }]) => {
+  const rows = Object.entries(data).map(([alias, { url, catalog }]) => {
     const tags = [flagged.has(alias) ? "--data" : "attach:"];
     if (sessions.has(alias)) tags.push("oidc");
-    return [`${alias}=${url}`, `(${tags.join(", ")})`];
+    const name = catalog === alias ? alias : `${alias}:${catalog}`;
+    return [`${name}=${url}`, `(${tags.join(", ")})`];
   });
   if (rows.length > 0) {
     const width = Math.max(...rows.map(([entry]) => entry!.length));

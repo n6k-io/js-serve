@@ -177,6 +177,25 @@ test("mcp serves inline and path pages", async () => {
   ).toBe(false);
   expect(await entry(url)).toContain("tok-secret");
   expect(await entry(url)).toContain("ws://127.0.0.1:1/ws");
+  expect(
+    await failed("set_data", {
+      alias: "foo",
+      url: "n6k://127.0.0.1:2",
+      token: "",
+      catalog: "bar",
+    }),
+  ).toBe(false);
+  expect(await entry(url)).toContain('"foo":"ws://127.0.0.1:2/ws"');
+  expect(await entry(url)).toContain('"foo":"bar"');
+  expect(
+    await failed("set_data", {
+      alias: "foo",
+      url: "n6k://x",
+      token: "",
+      catalog: "1x",
+    }),
+  ).toBe(true);
+  expect(await failed("remove_data", { alias: "foo" })).toBe(false);
   expect(await failed("remove_data", { alias: "db" })).toBe(false);
   expect(await entry(url)).not.toContain("tok-secret");
   expect(await entry(url)).not.toContain("ws://127.0.0.1:1/ws");

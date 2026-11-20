@@ -25,6 +25,7 @@ async function fetchToken(alias: string): Promise<string> {
 function engine(
   data: Record<string, string>,
   tokens: Record<string, string>,
+  catalogs: Record<string, string>,
   oidc: string[],
 ): N6kDuckDB {
   const sockets: Record<string, SocketSpec> = {};
@@ -38,7 +39,10 @@ function engine(
           ? tokens[alias]!
           : "",
     };
-    databases[alias] = { socket: alias };
+    databases[alias] = {
+      socket: alias,
+      catalog: Object.hasOwn(catalogs, alias) ? catalogs[alias]! : alias,
+    };
   }
   return new N6kDuckDB({
     bundle: duckdbBundle,
@@ -51,16 +55,18 @@ export default function Root({
   children,
   data = {},
   tokens = {},
+  catalogs = {},
   oidc = [],
   bare = false,
 }: {
   children: ReactNode;
   data?: Record<string, string>;
   tokens?: Record<string, string>;
+  catalogs?: Record<string, string>;
   oidc?: string[];
   bare?: boolean;
 }) {
-  const [duckdb] = useState(() => engine(data, tokens, oidc));
+  const [duckdb] = useState(() => engine(data, tokens, catalogs, oidc));
   return (
     <QueryProvider>
       <DuckDBProvider connect={duckdb.connect} metadataFns={duckdb.metadataFns}>

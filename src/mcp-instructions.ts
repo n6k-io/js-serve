@@ -5,7 +5,7 @@ Pages
 - Every @n6k.io/ui component and control is in scope without imports. Find them with search_components and read props with describe_component.
 
 Data
-- set_data(alias, url, token) attaches the gateway's catalog named \`alias\`. Queries run in DuckDB (wasm) in the browser; reference tables as \`alias.table\`.
+- set_data(alias, url, token, catalog?) attaches the server's catalog \`catalog\` (default \`alias\`) as \`alias\`. url is n6k(s)://host[:port] or ws(s)://…. Queries run in DuckDB (wasm) in the browser; reference tables as \`alias.table\`.
 - Components read data via props such as \`data\` (a relation), \`value\` (a measure expression, e.g. \`sum(amount)\`) or \`query\` (full SQL).
 - set_data and remove_data rebuild and reload every page.
 

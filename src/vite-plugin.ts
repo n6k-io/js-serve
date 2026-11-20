@@ -8,6 +8,7 @@ import { SERVE_ROOT, SRC_DIR } from "./paths";
 export type RootProps = {
   data: Record<string, string>;
   tokens: Record<string, string>;
+  catalogs?: Record<string, string>;
   oidc?: string[];
   bare?: boolean;
 };
