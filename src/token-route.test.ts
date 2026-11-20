@@ -1,5 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
-import { secretCookie, startServer, type Server, type Site } from "./server";
+import { secretCookie } from "./secret";
+import { startServer, type ServedPage, type Server, type Site } from "./server";
 
 const servers: Server[] = [];
 afterEach(async () => {
@@ -51,8 +52,12 @@ test("secret URL sets the cookie the token route requires", async () => {
       headers: cookie ? { cookie } : {},
     });
 
-  expect(await status(token())).toBe(403);
-  expect(await status(token(`${name}=wrong`))).toBe(403);
+  const missing = await token();
+  expect(missing.status).toBe(403);
+  expect(await missing.text()).toContain("?secret=");
+  const stale = await token(`${name}=wrong`);
+  expect(stale.status).toBe(403);
+  expect(await stale.text()).toContain("restarted");
   expect(await status(token(`n6k_secret_1=s3cret`))).toBe(403);
 
   const wrong = await fetch(`${server.url}x?secret=nope`, {
@@ -68,11 +73,45 @@ test("secret URL sets the cookie the token route requires", async () => {
   const set = visit.headers.get("set-cookie")!;
   expect(set).toContain(`${name}=s3cret`);
   expect(set).toContain("HttpOnly");
-  expect(set).toContain("SameSite=Strict");
+  expect(set).toContain("SameSite=Lax");
 
   const ok = await token(`${name}=s3cret`);
   expect(ok.status).toBe(200);
   expect(await ok.text()).toBe("tok");
+});
+
+test("page shell requires the secret cookie", async () => {
+  const page: ServedPage = {
+    key: "p",
+    file: "p.mdx",
+    title: "P",
+    rootProps: () => ({ data: {}, tokens: {} }),
+  };
+  const site: Site = {
+    resolve: (pathname) =>
+      pathname === "/" ? { kind: "page", page, rest: "/" } : undefined,
+    page: (key) => (key === "p" ? page : undefined),
+  };
+  const server = await startServer(site, {
+    hostname: "127.0.0.1",
+    port: 0,
+    origins: [],
+    secret: "s3cret",
+  });
+  servers.push(server);
+  const name = secretCookie(server.port);
+  const shell = (cookie?: string) =>
+    fetch(server.url, { headers: cookie ? { cookie } : {} });
+
+  const missing = await shell();
+  expect(missing.status).toBe(403);
+  expect(await missing.text()).toContain("?secret=");
+  const stale = await shell(`${name}=wrong`);
+  expect(stale.status).toBe(403);
+  expect(await stale.text()).toContain("restarted");
+  const ok = await shell(`${name}=s3cret`);
+  expect(ok.status).toBe(200);
+  expect(await ok.text()).toContain('<div id="root">');
 });
 
 test("--oidc-login is rejected by mcp and site", async () => {

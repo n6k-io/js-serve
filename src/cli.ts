@@ -7,8 +7,8 @@ import { DataArgError, resolveData, type DataSource } from "./data-args";
 import { hasWasmExtensions } from "./assets";
 import { parsePages, type PagesConfig } from "./pages";
 import { PagesSite } from "./pages-site";
+import { SECRET_PARAM } from "./secret";
 import {
-  SECRET_PARAM,
   reloadPage,
   startServer,
   type ServeOptions,
