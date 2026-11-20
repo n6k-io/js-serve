@@ -218,6 +218,8 @@ function routes(site: Site, options: ServeOptions, port: () => number): Plugin {
       );
     if (await serveSite(vite, site, res, pathname, check)) return;
     if (serveFont(res, pathname)) return;
+    const problem = check();
+    if (problem) return send(res, 403, SECRET_MESSAGES[problem]);
     next();
   };
 
