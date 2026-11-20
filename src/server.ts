@@ -1,4 +1,3 @@
-import { timingSafeEqual } from "node:crypto";
 import { createReadStream, realpathSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
@@ -15,6 +14,15 @@ import {
   n6kWasmExtensions,
 } from "@n6k.io/build/vite";
 import { findFont } from "./assets";
+import {
+  SECRET_MESSAGES,
+  SECRET_PARAM,
+  refusalPage,
+  sameSecret,
+  secretCookie,
+  secretProblem,
+  type SecretProblem,
+} from "./secret";
 import { SERVE_NODE_MODULES, SERVE_ROOT, SRC_DIR } from "./paths";
 import {
   RELOAD_EVENT,
@@ -53,20 +61,6 @@ export type Server = {
 };
 
 export const TOKEN_PREFIX = "/_n6k/token/";
-export const SECRET_PARAM = "secret";
-
-// Cookies are shared across ports on one host, so the name carries the port.
-export function secretCookie(port: number): string {
-  return `n6k_secret_${port}`;
-}
-
-function sameSecret(a: string | null | undefined, b: string): boolean {
-  if (a == undefined) return false;
-  const x = Buffer.from(a);
-  const y = Buffer.from(b);
-  return x.length === y.length && timingSafeEqual(x, y);
-}
-
 function shell(page: ServedPage): string {
   return `<!doctype html>
 <html lang="en">
@@ -119,24 +113,19 @@ function redirectWithSecret(
   url.searchParams.delete(SECRET_PARAM);
   res.writeHead(303, {
     Location: url.pathname + url.search,
-    "Set-Cookie": `${cookie}=${secret}; Path=/; HttpOnly; SameSite=Strict`,
+    "Set-Cookie": `${cookie}=${secret}; Path=/; HttpOnly; SameSite=Lax`,
   });
   res.end();
 }
 
 async function serveToken(
   options: ServeOptions,
-  req: IncomingMessage,
   res: ServerResponse,
   alias: string,
-  cookie: string,
+  refused: () => SecretProblem | undefined,
 ): Promise<void> {
-  const { secret } = options;
-  if (
-    secret !== undefined &&
-    !sameSecret(new Bun.CookieMap(req.headers.cookie ?? "").get(cookie), secret)
-  )
-    return send(res, 403, "missing secret: open the URL n6k-serve printed");
+  const problem = refused();
+  if (problem) return send(res, 403, SECRET_MESSAGES[problem]);
   const pending = options.token?.(alias);
   if (!pending) return send(res, 404, `no token for ${alias}`);
   try {
@@ -153,6 +142,7 @@ async function serveSite(
   site: Site,
   res: ServerResponse,
   pathname: string,
+  refused: () => SecretProblem | undefined,
 ): Promise<boolean> {
   const resolved = site.resolve(pathname);
   if (resolved?.kind === "redirect") {
@@ -160,14 +150,23 @@ async function serveSite(
     res.end();
     return true;
   }
-  const body =
-    resolved?.kind === "html"
-      ? resolved.body
-      : resolved?.kind === "page" && resolved.rest === "/"
-        ? await vite.transformIndexHtml(pathname, shell(resolved.page))
-        : undefined;
-  if (body === undefined) return false;
-  send(res, 200, body, { "Content-Type": "text/html; charset=utf-8" });
+  const html = { "Content-Type": "text/html; charset=utf-8" };
+  if (resolved?.kind === "html") {
+    send(res, 200, resolved.body, html);
+    return true;
+  }
+  if (resolved?.kind !== "page" || resolved.rest !== "/") return false;
+  const problem = refused();
+  if (problem) {
+    send(res, 403, refusalPage(problem), html);
+    return true;
+  }
+  send(
+    res,
+    200,
+    await vite.transformIndexHtml(pathname, shell(resolved.page)),
+    html,
+  );
   return true;
 }
 
@@ -185,6 +184,19 @@ function serveFont(res: ServerResponse, pathname: string): boolean {
 }
 
 function routes(site: Site, options: ServeOptions, port: () => number): Plugin {
+  const logged = new Set<SecretProblem>();
+  const refused = (
+    req: IncomingMessage,
+    cookie: string,
+  ): SecretProblem | undefined => {
+    if (options.secret === undefined) return undefined;
+    const problem = secretProblem(req, cookie, options.secret);
+    if (problem && !logged.has(problem)) {
+      logged.add(problem);
+      console.error(SECRET_MESSAGES[problem]);
+    }
+    return problem;
+  };
   const handle = async (
     vite: ViteDevServer,
     req: IncomingMessage,
@@ -196,15 +208,15 @@ function routes(site: Site, options: ServeOptions, port: () => number): Plugin {
     const cookie = secretCookie(port());
     if (options.secret !== undefined && url.searchParams.has(SECRET_PARAM))
       return redirectWithSecret(res, url, cookie, options.secret);
+    const check = () => refused(req, cookie);
     if (pathname.startsWith(TOKEN_PREFIX))
       return serveToken(
         options,
-        req,
         res,
         pathname.slice(TOKEN_PREFIX.length),
-        cookie,
+        check,
       );
-    if (await serveSite(vite, site, res, pathname)) return;
+    if (await serveSite(vite, site, res, pathname, check)) return;
     if (serveFont(res, pathname)) return;
     next();
   };

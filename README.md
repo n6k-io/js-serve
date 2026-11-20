@@ -26,7 +26,8 @@ sign-in is an error. The sign-in is saved in the OS credential store and reused
 on the next start.
 
 With `--oidc-login`, n6k-serve prints a URL with a per-launch `?secret=`. Open
-that URL: it sets a cookie, and the token route refuses requests without it.
+that URL: it sets a cookie, and the page and the token route refuse requests
+without it. After a restart, open the newly printed URL.
 
 ```sh
 n6k-serve logout                      # list saved sign-ins
