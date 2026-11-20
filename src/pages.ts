@@ -1,5 +1,5 @@
 import path from "node:path";
-import { ALIAS } from "./data-args";
+import { ALIAS, DataArgError, toWsUrl } from "./data-args";
 
 export type Gateway = { url: string; token: string; catalogs: string[] };
 export type App = { gateway: Gateway; pages: Record<string, string> };
@@ -41,11 +41,13 @@ export function name(value: string, where: string): string {
 
 function parseGateway(value: unknown, where: string): Gateway {
   const raw = record(value, where);
-  const url = string(raw.url, `${where}.url`);
-  if (!/^wss?:\/\//.test(url))
-    throw new PagesError(
-      `${where}.url: ${JSON.stringify(url)} is not ws(s)://`,
-    );
+  let url: string;
+  try {
+    url = toWsUrl(string(raw.url, `${where}.url`), `${where}.url`);
+  } catch (err) {
+    if (err instanceof DataArgError) throw new PagesError(err.message);
+    throw err;
+  }
   if (!Array.isArray(raw.catalogs))
     throw new PagesError(`${where}.catalogs: expected a list`);
   const catalogs = raw.catalogs.map((c, i) => {

@@ -5,7 +5,7 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { z } from "zod";
 import { describeComponent, searchComponents } from "./component-docs";
-import { ALIAS, type DataSource } from "./data-args";
+import { ALIAS, DataArgError, toWsUrl, type DataSource } from "./data-args";
 import { INSTRUCTIONS } from "./mcp-instructions";
 import { PagesError, name } from "./pages";
 import { checkPage, type ServedPage, type Server, type Site } from "./server";
@@ -70,6 +70,9 @@ export class McpSite implements Site {
         ),
         tokens: Object.fromEntries(
           [...this.data].map(([alias, { token }]) => [alias, token]),
+        ),
+        catalogs: Object.fromEntries(
+          [...this.data].map(([alias, { catalog }]) => [alias, catalog]),
         ),
       }),
     };
@@ -169,23 +172,33 @@ export function startMcp(
     "set_data",
     {
       description:
-        "Attach a data source as `alias` (also the server catalog name). Rebuilds and reloads every page.",
+        "Attach server catalog `catalog` (default: `alias`) from a n6k(s):// or ws(s):// URL as `alias`. Rebuilds and reloads every page.",
       inputSchema: z.object({
         alias: z.string(),
         url: z.string(),
         token: z.string(),
+        catalog: z.string().optional(),
       }),
     },
-    ({ alias, url, token }) => {
+    ({ alias, url, token, catalog = alias }) => {
       if (!ALIAS.test(alias))
         throw new PagesError(
           `alias ${JSON.stringify(alias)} must match ${ALIAS.source}`,
         );
-      if (!URL.canParse(url) || !/^wss?:$/.test(new URL(url).protocol))
+      if (!ALIAS.test(catalog))
         throw new PagesError(
-          `${JSON.stringify(url)} is not a ws:// or wss:// URL`,
+          `catalog ${JSON.stringify(catalog)} must match ${ALIAS.source}`,
         );
-      site.setData(alias, { url, token });
+      let ws: string;
+      try {
+        ws = toWsUrl(url, "set_data");
+      } catch (err) {
+        if (err instanceof DataArgError) throw new PagesError(err.message);
+        throw err;
+      }
+      if (!URL.canParse(ws))
+        throw new PagesError(`${JSON.stringify(url)} is not a URL`);
+      site.setData(alias, { url: ws, catalog, token });
       return text(`set data ${alias}`);
     },
   );

@@ -1,3 +1,4 @@
+import { DataArgError, toWsUrl } from "./data-args";
 import { SavedLogins, serverOf, type SavedLogin } from "./saved-logins";
 
 export class LogoutError extends Error {}
@@ -23,13 +24,18 @@ export async function logout(
       "saved sign-ins:",
       ...logins.map((l) => line(l)),
       "",
-      "sign out with: n6k-serve logout ws://host[:port] | --all",
+      "sign out with: n6k-serve logout n6k://host[:port] | --all",
     ];
   }
-  if (!/^wss?:\/\//.test(server) || !URL.canParse(server))
-    throw new LogoutError(`${server}: not a ws:// or wss:// URL`);
-  const removed = await saved.removeForServer(serverOf(server));
-  if (!removed)
-    throw new LogoutError(`no saved sign-in for ${serverOf(server)}`);
+  let url: string;
+  try {
+    url = toWsUrl(server, "logout");
+  } catch (err) {
+    if (err instanceof DataArgError) throw new LogoutError(err.message);
+    throw err;
+  }
+  if (!URL.canParse(url)) throw new LogoutError(`${server}: not a URL`);
+  const removed = await saved.removeForServer(serverOf(url));
+  if (!removed) throw new LogoutError(`no saved sign-in for ${serverOf(url)}`);
   return ["signed out of:", line(removed)];
 }

@@ -27,7 +27,7 @@ test("no server lists sign-ins and deletes nothing", async () => {
     "  http://kc/realms/a (client cli): ws://h1:8080, ws://h2:8080",
     "  http://kc/realms/b (client cli): wss://h3",
     "",
-    "sign out with: n6k-serve logout ws://host[:port] | --all",
+    "sign out with: n6k-serve logout n6k://host[:port] | --all",
   ]);
   expect(saved.get("http://kc/realms/a cli")).toBe("ra");
   expect(saved.get("http://kc/realms/b cli")).toBe("rb");
@@ -53,6 +53,14 @@ test("an unknown server or bad URL is an error", async () => {
   await expect(logout("http://h1:8080", false, logins)).rejects.toThrow(
     LogoutError,
   );
+});
+
+test("a n6k:// server matches the ws:// sign-in", async () => {
+  const { logins } = await seeded();
+  expect(await logout("n6ks://h3", false, logins)).toEqual([
+    "signed out of:",
+    "  http://kc/realms/b (client cli): wss://h3",
+  ]);
 });
 
 test("--all removes every sign-in and the index", async () => {
